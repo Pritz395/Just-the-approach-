@@ -49,7 +49,30 @@ flowchart TB
     Webhook -.->|future| University
 ```
 
+**What this diagram is:** The target architecture after the 16-week plan. Every box in the diagram is built or wired during the weeks below.
+
 **Data flow in short:** Scanner/agent or management command produces signed findings → ingestion API verifies and stores → CVE layer (existing) enriches → triage UI with server-side decrypt and “Convert to Issue” → verified events emitted via webhook for Rewards/RepoTrust (and later University). No new queue; periodic management commands and existing throttling only.
+
+**Where the 16 weeks map to this diagram:**
+
+| Component | Weeks |
+|-----------|--------|
+| Envelope schema, DB (Finding, Envelope, EvidenceBlob, key registry) | Bonding, W1 |
+| Ingestion API, replay protection, auth | W2 |
+| Agent + management command, detection pack (Semgrep + HTTP) | W3 |
+| Triage list/detail, evidence viewer, Convert to Issue (sketch) | W4 |
+| CVE plumbing (cve_id, cve_score, reuse PR #5057) | W5 |
+| Dedup, fingerprint, confidence | W6 |
+| CVE filters, Related CVEs, CVE autocomplete in Convert to Issue | W7 |
+| Evidence viewer polish, RFI templates, **midterm E2E** | W8 |
+| Accuracy suite, metrics, acceptance gates | W9 |
+| Reconfirmation, quotas, resilience | W10 |
+| Remediation fragments, "why this matters" | W11 |
+| security.txt, CSV/PDF reports | W12 |
+| events_ng outbox, webhook (HMAC), read-only API | W13 |
+| Security review, hardening | W14 |
+| Pilot prep, runbooks, docs | W15 |
+| Pilot run, v1.0, final report | W16 |
 
 ---
 
