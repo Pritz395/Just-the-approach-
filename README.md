@@ -15,28 +15,28 @@ This project extends work I have already contributed to OWASP BLT, including **P
 ```mermaid
 flowchart TB
     subgraph External["External inputs"]
-        Agent["NetGuardian Agent\n(Semgrep + HTTP checks)"]
-        MgmtCmd["Management command\n(periodic scan)"]
+        Agent["NetGuardian Agent - Semgrep + HTTP checks"]
+        MgmtCmd["Management command - periodic scan"]
     end
 
-    subgraph BLT["BLT server (Django/DRF)"]
-        Ingest["Ingestion API\n(signature + replay check)"]
-        DB[( "PostgreSQL\nFinding, Envelope,\nEvidenceBlob, events_ng" )]
-        CVE["CVE layer (PR #5057)\nnormalize_cve_id,\nget_cached_cve_score"]
-        Triage["Triage UI\n(list, detail, filters)"]
+    subgraph BLT["BLT server - Django/DRF"]
+        Ingest["Ingestion API - signature + replay check"]
+        DB["PostgreSQL - Finding, Envelope, EvidenceBlob, events_ng"]
+        CVE["CVE layer PR 5057 - normalize_cve_id, get_cached_cve_score"]
+        Triage["Triage UI - list, detail, filters"]
         Convert["Convert to Issue"]
         Reports["CSV / PDF reports"]
-        Webhook["Verified-events webhook\n(HMAC-signed)"]
+        Webhook["Verified-events webhook - HMAC-signed"]
     end
 
-    subgraph Downstream["Downstream (out of GSoC scope)"]
-        Rewards["BLT-Rewards (B)"]
-        RepoTrust["RepoTrust (X)"]
-        University["BLT University (C)"]
+    subgraph Downstream["Downstream - out of GSoC scope"]
+        Rewards["BLT-Rewards B"]
+        RepoTrust["RepoTrust X"]
+        University["BLT University C"]
     end
 
-    Agent -->|"ztr-finding-1 envelope"| Ingest
-    MgmtCmd -->|"Finding rows"| DB
+    Agent -->|ztr-finding-1 envelope| Ingest
+    MgmtCmd -->|Finding rows| DB
     Ingest --> DB
     DB --> CVE
     CVE --> Triage
@@ -46,7 +46,7 @@ flowchart TB
     Triage --> Reports
     Webhook --> Rewards
     Webhook --> RepoTrust
-    Webhook -.->|"future"| University
+    Webhook -.->|future| University
 ```
 
 **Data flow in short:** Scanner/agent or management command produces signed findings → ingestion API verifies and stores → CVE layer (existing) enriches → triage UI with server-side decrypt and “Convert to Issue” → verified events emitted via webhook for Rewards/RepoTrust (and later University). No new queue; periodic management commands and existing throttling only.
