@@ -49,13 +49,13 @@ flowchart TB
     Webhook -.->|future| University
 ```
 
-**What this diagram is:** The target architecture after the 16-week plan. Every box in the diagram is built or wired during the weeks below.
+**What this diagram is:** The target architecture after the full 16-phase plan. Every box in the diagram is built or wired during the weeks below.
 
 **Data flow in short:** Scanner/agent or management command produces signed findings → ingestion API verifies and stores → CVE layer (existing) enriches → triage UI with server-side decrypt and “Convert to Issue” → verified events emitted via webhook for Rewards/RepoTrust (and later University). No new queue; periodic management commands and existing throttling only.
 
-**Where the 16 weeks map to this diagram:**
+**Where the 16 phases map to this diagram:**
 
-| Component | Weeks |
+| Component | Phases |
 |-----------|--------|
 | Envelope schema, DB (Finding, Envelope, EvidenceBlob, key registry) | Bonding, W1 |
 | Ingestion API, replay protection, auth | W2 |
@@ -105,20 +105,20 @@ flowchart TB
 
 | GSoC Week | Focus (from detailed plan) |
 |----------|-----------------------------|
-| 1 | Weeks 1–2: envelope/schema + ingestion & zero-trust plumbing |
-| 2 | Weeks 3–4: detection MVP + triage-lite UI |
-| 3 | Week 5: CVE intelligence plumbing |
-| 4 | Weeks 6–7: validation/dedup + CVE-aware triage UX |
-| 5 | Week 8: triage polish, RFIs, midterm E2E demo |
-| 6 | Week 9: accuracy sampling & tuning |
-| 7 | Week 10: consensus & resilience |
-| 8 | Week 11: remediation & insights |
-| 9 | Week 12: disclosure helpers & reports |
-| 10 | Week 13: verified events for downstream |
-| 11 | Week 14: hardening & security review |
-| 12 | Weeks 15–16: pilot prep, pilot run, v1.0 + final report |
+| 1 | Phases 1–2: envelope/schema + ingestion & zero-trust plumbing |
+| 2 | Phases 3–4: detection MVP + triage-lite UI |
+| 3 | Phase 5: CVE intelligence plumbing |
+| 4 | Phases 6–7: validation/dedup + CVE-aware triage UX |
+| 5 | Phase 8: triage polish, RFIs, midterm E2E demo |
+| 6 | Phase 9: accuracy sampling & tuning |
+| 7 | Phase 10: consensus & resilience |
+| 8 | Phase 11: remediation & insights |
+| 9 | Phase 12: disclosure helpers & reports |
+| 10 | Phase 13: verified events for downstream |
+| 11 | Phase 14: hardening & security review |
+| 12 | Phases 15–16: pilot prep, pilot run, v1.0 + final report |
 
-### Week 1 — Envelope & schema
+### Phase 1 — Envelope & schema
 
 **Weekly deliverables:**
 - A written `ztr-finding-1` spec that covers fields, signatures, timestamps, and nonce — enough that someone else could implement against it.
@@ -133,7 +133,7 @@ flowchart TB
 
 ---
 
-### Week 2 — Ingestion & Zero-Trust plumbing
+### Phase 2 — Ingestion & Zero-Trust plumbing
 
 **Weekly deliverables:**
 - A working ingestion API that accepts encrypted findings and verifies signatures and timestamps server-side.
@@ -147,7 +147,7 @@ flowchart TB
 
 ---
 
-### Week 3 — Detection MVP
+### Phase 3 — Detection MVP
 
 **Weekly deliverables:**
 - 3–5 Semgrep rules for Python/JS with fixture code that actually triggers them, plus 2 HTTP checks (security headers and a reflected-XSS canary in a fixture app).
@@ -161,7 +161,7 @@ flowchart TB
 
 ---
 
-### Week 4 — Triage-lite UI
+### Phase 4 — Triage-lite UI
 
 **Weekly deliverables:**
 - A Finding list view with severity/rule/target filters, pagination, and sort — something you can actually use to triage.
@@ -175,7 +175,7 @@ flowchart TB
 
 ---
 
-### Week 5 — CVE Intelligence plumbing
+### Phase 5 — CVE Intelligence plumbing
 
 **Weekly deliverables:**
 - Findings (or linked Issues) populated with `cve_id` and `cve_score`, using `normalize_cve_id` and `get_cached_cve_score` from `website/cache/cve_cache.py` — no reinventing the wheel.
@@ -188,7 +188,7 @@ flowchart TB
 
 ---
 
-### Week 6 — Validation & dedup
+### Phase 6 — Validation & dedup
 
 **Weekly deliverables:**
 - A fingerprint defined as `(rule_id, target_url, optional selector, evidence_digest)` with a unique DB index backing it.
@@ -202,7 +202,7 @@ flowchart TB
 
 ---
 
-### Week 7 — CVE-aware triage UX
+### Phase 7 — CVE-aware triage UX
 
 **Weekly deliverables:**
 - Finding list filters for `cve_id`, `cve_score_min`, and `cve_score_max`, mirroring what already exists on the Issue side.
@@ -216,7 +216,7 @@ flowchart TB
 
 ---
 
-### Week 8 — Triage polish & RFI
+### Phase 8 — Triage polish & RFI
 
 **Weekly deliverables:**
 - A noticeably better evidence viewer — improved layout, syntax highlighting or snippet context, something that makes reviewing findings less painful.
@@ -230,7 +230,7 @@ flowchart TB
 
 ---
 
-### Week 9 — Accuracy sampling & tuning
+### Phase 9 — Accuracy sampling & tuning
 
 **Weekly deliverables:**
 - A curated mini-suite of 5–8 fixtures (code or URLs) with known expected outcomes — the ground truth we'll measure against.
@@ -243,7 +243,7 @@ flowchart TB
 
 ---
 
-### Week 10 — Consensus & resilience
+### Phase 10 — Consensus & resilience
 
 **Weekly deliverables:**
 - A reconfirmation gate for critical-severity findings — a second heuristic or rule has to agree before "Convert to Issue" goes through.
@@ -257,7 +257,7 @@ flowchart TB
 
 ---
 
-### Week 11 — Remediation & insights
+### Phase 11 — Remediation & insights
 
 **Weekly deliverables:**
 - Markdown remediation fragments for each rule type, with OWASP links — static content, nothing dynamic.
@@ -271,7 +271,7 @@ flowchart TB
 
 ---
 
-### Week 12 — Disclosure helpers & reports
+### Phase 12 — Disclosure helpers & reports
 
 **Weekly deliverables:**
 - `security.txt` detection (fetch/parse or a stub) integrated into "Convert to Issue" and the report flow, so disclosure contacts are surfaced automatically.
@@ -284,7 +284,7 @@ flowchart TB
 
 ---
 
-### Week 13 — Verified events for downstream
+### Phase 13 — Verified events for downstream
 
 **Weekly deliverables:**
 - An `events_ng` outbox table with a versioned payload schema: `cve_id`, `cve_score`, `rule_id`, `severity`, `org_id`/`repo`, `finding_id`/`issue_id`, `created_at`, `dedupe_key`, `version`.
@@ -298,7 +298,7 @@ flowchart TB
 
 ---
 
-### Week 14 — Hardening & security review
+### Phase 14 — Hardening & security review
 
 **Weekly deliverables:**
 - A proper security review pass: key handling, nonce uniqueness, evidence redaction in logs and templates, permission checks everywhere, and cache-poisoning resistance.
@@ -311,7 +311,7 @@ flowchart TB
 
 ---
 
-### Week 15 — Pilot prep & docs
+### Phase 15 — Pilot prep & docs
 
 **Weekly deliverables:**
 - A pilot checklist covering configuration steps, runbooks, and a rollback plan — so the first run isn't improvised.
@@ -324,7 +324,7 @@ flowchart TB
 
 ---
 
-### Week 16 — Pilot run & final polish
+### Phase 16 — Pilot run & final polish
 
 **Weekly deliverables:**
 - A live pilot with 1–2 orgs, with real metrics collected: time-to-triage, FP/FN feedback, and how useful the CVE filters and reports actually are in practice.
@@ -338,8 +338,8 @@ flowchart TB
 
 ## 6. Milestone checkpoints
 
-- **Midterm (end of Week 8):** E2E demo — signed ingestion → Finding in DB → triage list with filters → server-side decrypt/view evidence → "Convert to Issue" with CVE autopopulated.
-- **Final (end of Week 16):** Verified-events webhook + minimal detector pack + curated metrics + pilot feedback.
+- **Midterm (after Phase 8):** E2E demo — signed ingestion → Finding in DB → triage list with filters → server-side decrypt/view evidence → "Convert to Issue" with CVE autopopulated.
+- **Final (after Phase 16):** Verified-events webhook + minimal detector pack + curated metrics + pilot feedback.
 
 ---
 
