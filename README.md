@@ -53,26 +53,22 @@ flowchart TB
 
 **Data flow in short:** Scanner/agent or management command produces signed findings → ingestion API verifies and stores → CVE layer (existing) enriches → triage UI with server-side decrypt and “Convert to Issue” → verified events emitted via webhook for Rewards/RepoTrust (and later University). No new queue; periodic management commands and existing throttling only.
 
-**Where the 16 phases map to this diagram:**
+**Where the 12 GSoC weeks map to this diagram:**
 
-| Component | Phases |
-|-----------|--------|
-| Envelope schema, DB (Finding, Envelope, EvidenceBlob, key registry) | Bonding, W1 |
-| Ingestion API, replay protection, auth | W2 |
-| Agent + management command, detection pack (Semgrep + HTTP) | W3 |
-| Triage list/detail, evidence viewer, Convert to Issue (sketch) | W4 |
-| CVE plumbing (cve_id, cve_score, reuse PR #5057) | W5 |
-| Dedup, fingerprint, confidence | W6 |
-| CVE filters, Related CVEs, CVE autocomplete in Convert to Issue | W7 |
-| Evidence viewer polish, RFI templates, **midterm E2E** | W8 |
-| Accuracy suite, metrics, acceptance gates | W9 |
-| Reconfirmation, quotas, resilience | W10 |
-| Remediation fragments, "why this matters" | W11 |
-| security.txt, CSV/PDF reports | W12 |
-| events_ng outbox, webhook (HMAC), read-only API | W13 |
-| Security review, hardening | W14 |
-| Pilot prep, runbooks, docs | W15 |
-| Pilot run, v1.0, final report | W16 |
+| Week | What it delivers in the diagram |
+|------|---------------------------------|
+| 1 | Envelope schema + DB (Finding, Envelope, EvidenceBlob, key registry) + ingestion API, replay protection, auth |
+| 2 | Agent + management command + initial detection pack wired into ingestion |
+| 3 | Triage list/detail UI and initial CVE plumbing (cve_id, cve_score via PR #5057) |
+| 4 | Validation & dedup (fingerprint, confidence) + CVE-aware triage UX (filters, Related CVEs, autocomplete) |
+| 5 | Evidence viewer polish + RFI templates + midterm E2E path through triage and Convert to Issue |
+| 6 | Accuracy suite + metrics and acceptance gates that govern the detector pack |
+| 7 | Consensus/reconfirmation for criticals + quotas and resilience in the ingestion path |
+| 8 | Remediation fragments and "why this matters" surfaced in triage and reports |
+| 9 | security.txt integration + CSV/PDF reports exporting findings and CVEs |
+| 10 | events_ng outbox + HMAC-signed webhook + read-only events API for downstream systems |
+| 11 | Security review and hardening of all components in the diagram |
+| 12 | Pilot prep, pilot run, and v1.0 of the full NetGuardian pipeline |
 
 ---
 
