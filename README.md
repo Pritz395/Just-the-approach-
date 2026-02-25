@@ -79,16 +79,16 @@ flowchart TB
 |------|---------------------------------|
 | 1 | Envelope schema + DB (Finding, Envelope, EvidenceBlob, SenderKey) + ingestion API, replay protection, auth |
 | 2 | BLT Exporter in Worker (`src/exporters/blt_exporter.py`) + E2E Worker &rarr; BLT ingestion test |
-| 3 | Triage list/detail UI and initial CVE plumbing (cve_id, cve_score via PR #5057) |
-| 4 | Validation & dedup (fingerprint, confidence) + CVE-aware triage UX (filters, Related CVEs, autocomplete) |
-| 5 | Evidence viewer polish + RFI templates + midterm E2E path through triage and Convert to Issue |
-| 6 | Worker &rarr; BLT fidelity suite + metrics and acceptance gates (ingestion success rate, CVE enrichment accuracy) |
-| 7 | Consensus/reconfirmation for criticals + quotas and resilience in the ingestion path |
-| 8 | Remediation fragments and "why this matters" surfaced in triage and reports |
-| 9 | security.txt integration + CSV/PDF reports exporting findings and CVEs |
-| 10 | events_ng outbox + HMAC-signed webhook + read-only events API for downstream systems |
-| 11 | Security review and hardening of all components in the diagram |
-| 12 | Pilot prep, pilot run, and v1.0 of the full NetGuardian pipeline |
+| 3 | Triage list/detail UI + permissions + server-side decrypt + "Convert to Issue" sketched |
+| 4 | CVE plumbing (cve_id, cve_score via PR #5057) + validation & dedup (fingerprint, confidence) |
+| 5 | CVE-aware triage UX (filters, Related CVEs, autocomplete) + evidence viewer polish start |
+| 6 | Evidence viewer polish + RFI templates + midterm E2E demo (full path through triage and Convert to Issue) |
+| 7 | Worker &rarr; BLT fidelity suite + metrics and acceptance gates (ingestion success rate, CVE enrichment accuracy) |
+| 8 | Consensus/reconfirmation for criticals + quotas and resilience in the ingestion path |
+| 9 | Remediation fragments and "why this matters" surfaced in triage and reports |
+| 10 | security.txt integration + CSV export (required); PDF export (optional/stretch) |
+| 11 | events_ng outbox + HMAC-signed webhook + read-only events API for downstream systems |
+| 12 | Security hardening + pilot prep + pilot run + v1.0 and final report |
 
 ---
 
@@ -124,20 +124,20 @@ flowchart TB
 
 **GSoC 12-week calendar (how the detailed phases map to coding weeks):**
 
-| GSoC Week | Focus (from detailed plan) |
-|----------|-----------------------------|
-| 1 | Phases 1-2: envelope/schema + ingestion & zero-trust plumbing |
-| 2 | Phases 3-4: BLT Exporter integration + triage-lite UI |
-| 3 | Phase 5: CVE intelligence plumbing |
-| 4 | Phases 6-7: validation/dedup + CVE-aware triage UX |
-| 5 | Phase 8: triage polish, RFIs, midterm E2E demo |
-| 6 | Phase 9: Worker &rarr; BLT fidelity & acceptance gates |
-| 7 | Phase 10: consensus & resilience |
-| 8 | Phase 11: remediation & insights |
-| 9 | Phase 12: disclosure helpers & reports |
-| 10 | Phase 13: verified events for downstream |
-| 11 | Phase 14: hardening & security review |
-| 12 | Phases 15-16: pilot prep, pilot run, v1.0 + final report |
+| GSoC Week | Focus (from detailed plan) | Notes |
+|----------|-----------------------------|-------|
+| 1 | Phases 1-2: envelope/schema + ingestion & zero-trust plumbing | As-is |
+| 2 | Phase 3 only: BLT Exporter integration | Split; full 5-day sprint in Worker |
+| 3 | Phase 4 only: Triage-lite UI | Split; list/detail + permissions + Convert to Issue |
+| 4 | Phases 5-6: CVE plumbing + validation/dedup | Phase 5 is fast (reuse PR #5057); pairs with Phase 6 |
+| 5 | Phase 7: CVE-aware triage UX + Phase 8 start (polish) | Good pairing |
+| 6 | Phase 8: triage polish, RFIs, midterm E2E demo | Checkpoint week |
+| 7 | Phase 9: Worker &rarr; BLT fidelity & acceptance gates | |
+| 8 | Phase 10: consensus & resilience | |
+| 9 | Phase 11: remediation & insights | |
+| 10 | Phase 12: disclosure helpers & reports (CSV required; PDF optional) | |
+| 11 | Phase 13: verified events for downstream | |
+| 12 | Phases 14-16: hardening + pilot prep + pilot run + v1.0 | Sequential: harden &rarr; pilot &rarr; final report |
 
 ### Phase 1 - Envelope & schema
 
@@ -197,6 +197,8 @@ flowchart TB
 ---
 
 ### Phase 5 - CVE Intelligence plumbing
+
+**Note:** CVE plumbing is fast (~2 days) because it reuses existing `website/cache/cve_cache.py` from PR #5057. Week 4 pairs Phase 5 with Phase 6 (validation/dedup) to keep the 12-week timeline.
 
 **Weekly deliverables:**
 - Findings (or linked Issues) populated with `cve_id` and `cve_score`, using `normalize_cve_id` and `get_cached_cve_score` from `website/cache/cve_cache.py` - no reinventing the wheel.
