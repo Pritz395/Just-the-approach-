@@ -6,7 +6,7 @@
 
 ## 1. Introduction
 
-This project extends work I have already contributed to OWASP BLT, including **PR #5057** (CVE search, filtering, caching, autocomplete, and CVE-aware indexing on the Issue model), merged in the main BLT repo. NetGuardian is not a from-scratch implementation: it builds on that CVE layer and on BLT's existing Django + DRF + templates/HTMX stack to deliver a zero-trust encrypted ingestion path for security findings, a small detection pack, CVE-aware triage, and verified events for downstream systems (Rewards, RepoTrust, University).
+This project extends work I have already contributed to OWASP BLT, including **PR #5057** (CVE search, filtering, caching, autocomplete, and CVE-aware indexing on the Issue model), merged in the main BLT repo. NetGuardian is not a from-scratch implementation: it builds on that CVE layer and on BLT's existing Python backend and UI stack to deliver a zero-trust encrypted ingestion path for security findings, a small detection pack, CVE-aware triage, and verified events for downstream systems (Rewards, RepoTrust, University).
 
 ---
 
@@ -19,7 +19,7 @@ flowchart TB
         MgmtCmd["Management command - periodic scan"]
     end
 
-    subgraph BLT["BLT server - Django/DRF"]
+    subgraph BLT["BLT backend - Python workers + Postgres"]
         Ingest["Ingestion API - signature + replay check"]
         DB["PostgreSQL - Finding, Envelope, EvidenceBlob, events_ng"]
         CVE["CVE layer PR 5057 - normalize_cve_id, get_cached_cve_score"]
@@ -78,7 +78,7 @@ flowchart TB
 
 ## 3. Stack & scope (CodeRabbit-aligned)
 
-- **Stack:** Django 5.x + DRF, PostgreSQL, existing URL routing and auth. **No new queue:** periodic management commands and existing throttling middleware only; no Celery.
+- **Stack:** Python worker processes + PostgreSQL, wired into BLT's existing infrastructure (no new monolithic Django/DRF code). **No new queue:** periodic management commands and existing throttling middleware only; no Celery.
 - **Evidence:** Server-side decrypt with audited access (permission checks + access logging). Client-side crypto is post–v1.
 - **Reports:** CSV and PDF both in scope (PDF e.g. via WeasyPrint, timeboxed in Week 12).
 - **Detection pack:** 3–5 Semgrep rules + 2 HTTP checks, with acceptance gates and curated fixtures; regression test in CI.
@@ -101,11 +101,28 @@ flowchart TB
 
 ## 5. Week-by-week plan (granular deliverables + day-level)
 
+**GSoC 12-week calendar (how the detailed weeks map to coding weeks):**
+
+| GSoC Week | Focus (from detailed plan) |
+|----------|-----------------------------|
+| 1 | Weeks 1–2: envelope/schema + ingestion & zero-trust plumbing |
+| 2 | Weeks 3–4: detection MVP + triage-lite UI |
+| 3 | Week 5: CVE intelligence plumbing |
+| 4 | Weeks 6–7: validation/dedup + CVE-aware triage UX |
+| 5 | Week 8: triage polish, RFIs, midterm E2E demo |
+| 6 | Week 9: accuracy sampling & tuning |
+| 7 | Week 10: consensus & resilience |
+| 8 | Week 11: remediation & insights |
+| 9 | Week 12: disclosure helpers & reports |
+| 10 | Week 13: verified events for downstream |
+| 11 | Week 14: hardening & security review |
+| 12 | Weeks 15–16: pilot prep, pilot run, v1.0 + final report |
+
 ### Week 1 — Envelope & schema
 
 **Weekly deliverables:**
 - A written `ztr-finding-1` spec that covers fields, signatures, timestamps, and nonce — enough that someone else could implement against it.
-- Django models for `Finding`, `Envelope`, and `EvidenceBlob` with migrations applied and everything registered in admin.
+- Database/ORM models for `Finding`, `Envelope`, and `EvidenceBlob` with migrations applied and everything registered in admin.
 - A key registry model (per-org/per-sender) and a defined pattern for `SignedNonce` — either a DB table or a cache-key approach.
 - Documented pagination defaults and a DB index strategy for findings, so we're not making it up later.
 - Serializer stubs for `Finding`/`Envelope` and unit tests covering model constraints and validation.
