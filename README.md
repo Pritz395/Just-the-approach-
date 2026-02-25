@@ -69,6 +69,8 @@ flowchart TB
     Webhook -.->|future| University
 ```
 
+**Legend (downstream):** B = BLT-Rewards; X = RepoTrust; C = BLT-University.
+
 **What this diagram is:** The target architecture after the full 16-phase plan. The Worker side (Cloudflare) already exists; the GSoC work adds the BLT Exporter and builds everything on the BLT Server side.
 
 **Data flow in short:** Worker discovers targets and runs scanners &rarr; results stage in KV &rarr; BLT Exporter converts to signed `ztr-finding-1` envelopes and POSTs to BLT &rarr; ingestion API verifies and stores &rarr; CVE layer (existing PR #5057) enriches &rarr; triage UI with server-side decrypt and "Convert to Issue" &rarr; verified events emitted via HMAC-signed webhook for downstream. No new queue; periodic management commands and existing throttling only.
