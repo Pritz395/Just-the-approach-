@@ -6,7 +6,7 @@
 
 ## 1. Introduction
 
-This project extends work I've already contributed to OWASP BLT, including PR `#5057` (CVE search, filtering, caching, autocomplete, and CVE-aware indexing on the Issue model), which is merged in the main repo. NetGuardian builds on that CVE layer and on the existing BLT-NetGuardian Worker (a Cloudflare Python Worker for autonomous discovery and scanning) to deliver a zero-trust ingestion path for security findings, CVE-aware triage, and verified events for downstream systems (Rewards, RepoTrust, University).
+This project extends work I've already contributed to OWASP BLT, including PR #5057 (CVE search, filtering, caching, autocomplete, and CVE-aware indexing on the Issue model), which is merged in the main repo. NetGuardian builds on that CVE layer and on the existing BLT-NetGuardian Worker (a Cloudflare Python Worker for autonomous discovery and scanning) to deliver a zero-trust ingestion path for security findings, CVE-aware triage, and verified events for downstream systems (Rewards, RepoTrust, University).
 
 **Relationship to the existing BLT-NetGuardian Worker**
 
@@ -14,7 +14,7 @@ The Worker discovers targets (CT logs, GitHub API, blockchain) and runs security
 
 1. Adding a BLT exporter in the Worker that converts scan results to signed ztr-finding-1 envelopes and POSTs to BLT.
 2. Building BLT ingestion (`/api/ng/ingest`) with replay protection and Postgres storage.
-3. Enriching findings via the PR `#5057` CVE cache.
+3. Enriching findings via the PR #5057 CVE cache.
 4. Adding a triage UI and "Convert to Issue".
 5. Emitting HMAC-signed verified events for downstream.
 
@@ -24,7 +24,7 @@ The split is clean: the Worker handles discovery, scanning, and KV; BLT handles 
 
 - Python 3.11+, Django 5.x dev environment.
 - Access to the BLT main repo and BLT-NetGuardian Worker repo.
-- Cloudflare Workers CLI (`wrangler`) for local Worker testing.
+- Cloudflare Workers CLI (wrangler) for local Worker testing.
 - PostgreSQL 14+ for local schema and management command testing.
 
 ---
@@ -72,32 +72,25 @@ flowchart TB
     Webhook -.->|future| University
 ```
 
-**Downstream consumers:** B = BLT-Rewards (gamification); X = RepoTrust (repository trust scoring); C = BLT-University (education, future).
-
 Worker already exists; GSoC adds the Exporter and all BLT-side pieces. Flow: Worker to KV to Exporter to signed envelopes to ingestion to CVE enrichment to triage UI to "Convert to Issue" to HMAC-signed webhook. No new queue; existing throttling only.
 
 **Stack**
 
-- **BLT server:** Django 5.x, Django REST Framework, PostgreSQL.
-- **Worker:** Cloudflare Python Worker (existing, for autonomous scanning and KV storage).
+- BLT server: Django 5.x, Django REST Framework, PostgreSQL.
+- Worker: Cloudflare Python Worker (existing, for autonomous scanning and KV storage).
 
 **Architecture split**
 
-- **Detection and scanning:** Already implemented in BLT-NetGuardian Worker. No new detector code in GSoC scope.
-- **Ingestion API:** New DRF endpoints in BLT (`/api/ng/ingest`, `/api/ng/ingest/batch`) reusing existing auth patterns (TokenAuthentication, org-scoped permissions, throttling middleware).
-- **Triage UI:** Server-rendered templates with HTMX, reusing existing BLT frontend patterns.
-- **No new infrastructure:** No Celery, no separate worker daemons, no new queue systems. Periodic management commands (cron/Kubernetes CronJob) where needed; existing throttling middleware for rate limits.
+- Detection and scanning: already implemented in BLT-NetGuardian Worker, no new detector code in GSoC scope.
+- Ingestion API: new DRF endpoints in BLT (`/api/ng/ingest`, `/api/ng/ingest/batch`) reusing existing auth patterns (TokenAuthentication, org-scoped permissions, throttling middleware).
+- Triage UI: server-rendered templates with HTMX, reusing existing BLT frontend patterns.
+- No new infrastructure: no Celery, no separate worker daemons, no new queue systems. Periodic management commands (cron/Kubernetes CronJob) where needed; existing throttling middleware for rate limits.
 
 **Key files**
 
-- **Worker (existing):** `src/worker.py`, `src/scanners/*.py`, `src/models/*.py`, `ARCHITECTURE.md`, `API.md`.
-- **BLT (existing):**
-  - `website/cache/cve_cache.py` (PR `#5057`) for `normalize_cve_id()` and `get_cached_cve_score()`.
-  - `website/models.py` for `Issue.cve_id` and `Issue.cve_score`.
-  - `blt/middleware/throttling.py` and `blt/middleware/ip_restrict.py` for rate limiting and IP controls.
-  - `website/views/user.py` for the HMAC pattern used by GitHub webhooks.
-- **BLT (new in this project):**
-  - `website/netguardian/` (models, views, templates for Finding, Envelope, EvidenceBlob, EventOutbox, triage UI, and ingestion endpoints).
+- Worker (existing): `src/worker.py`, `src/scanners/*.py`, `src/models/*.py`, `ARCHITECTURE.md`, `API.md`.
+- BLT (existing): `website/cache/cve_cache.py` (PR #5057) for `normalize_cve_id()` and `get_cached_cve_score()`; `website/models.py` for `Issue.cve_id` and `Issue.cve_score`; `blt/middleware/throttling.py` and `blt/middleware/ip_restrict.py` for rate limiting and IP controls; `website/views/user.py` for the HMAC pattern used by GitHub webhooks.
+- BLT (new): `website/netguardian/` (models, views, templates for Finding, Envelope, EvidenceBlob, EventOutbox, triage UI, and ingestion endpoints).
 
 ---
 
@@ -113,28 +106,30 @@ These invariants are treated as contracts: tests are written against them, and a
 
 ---
 
-## 4. 12-week implementation plan (phases 1–16)
+## 4. 12-week implementation plan (phases 1-16)
 
 **GSoC 12-week calendar and AI usage**
 
-Models (see 9): **Cursor** (IDE); **GPT-4.1** (reasoning/design); **o3-mini** (fast edits/boilerplate); **Claude 3.5 Sonnet** (second opinion on security).
+Models (see section 9): Cursor (IDE); Claude Opus 4.5 (reasoning/design); Claude Sonnet 4.5 (fast edits/boilerplate); GPT-5.2 (second opinion on security).
 
-| GSoC Week | Focus (phases) | Models most likely to be used | How AI helps (where, how, why — details under each phase below) |
-|-----------|----------------|-------------|------------------------------------------------------------------|
-| 1 | Phases 1–2: envelope/schema + ingestion and zero-trust | GPT-4.1, o3-mini | Spec draft and field names (GPT-4.1); serializer/test scaffolds (o3-mini). I refine and harden; Claude 3.5 for second pass on crypto/schema. |
-| 2 | Phase 3: BLT Exporter integration | o3-mini, Claude 3.5 | Mapping ScanResult→envelope and retry/backoff (o3-mini); I hand-check signing/headers/errors; Claude 3.5 to double-check signing and error paths. |
-| 3 | Phase 4: Triage-lite UI | o3-mini | Template markup, filter forms, HTMX snippets (o3-mini); I keep permission/decrypt/queryset logic explicit and reviewed. |
-| 4 | Phases 5–6: CVE plumbing + validation/dedup | o3-mini | Repetitive CVE/fingerprint tests and migration boilerplate (o3-mini); I design fingerprint and validation rules. |
-| 5 | Phase 7 + Phase 8 start: CVE-aware UX + polish | o3-mini | UX copy for filters and "Related CVEs", evidence viewer layout (o3-mini); I enforce a11y and security. |
-| 6 | Phase 8: triage polish, RFIs, midterm E2E | o3-mini, GPT-4.1 | RFI template text and demo script (o3-mini); edge-case enumeration for E2E plan (GPT-4.1). Checkpoint week. |
-| 7 | Phase 9: Fidelity and acceptance gates | o3-mini | Fixture generation and query/report boilerplate (o3-mini); I define thresholds and metrics. |
-| 8 | Phase 10: consensus and resilience | o3-mini, GPT-4.1 | Quota/rate-limit patterns (o3-mini); schema and middleware integration choices (GPT-4.1). |
-| 9 | Phase 11: remediation and insights | o3-mini | Remediation fragments and "why this matters" copy (o3-mini); I tune with mentors for OWASP alignment. |
-| 10 | Phase 12: disclosure and reports | o3-mini | CSV/PDF templates and snapshot-test harnesses (o3-mini); I own redaction and verify no leaks. CSV required; PDF optional. |
-| 11 | Phase 13: verified events for downstream | GPT-4.1, o3-mini | Event schema variants and pagination patterns (GPT-4.1); API/docs boilerplate (o3-mini); I lock schema and HMAC/idempotency. |
-| 12 | Phases 14–16: hardening, pilot, v1.0 | o3-mini, Claude 3.5 | Checklists and runbooks (o3-mini); final summary draft (o3-mini); Claude 3.5 second opinion on security-critical diffs; I do final review. |
+| GSoC Week | Focus (phases) | Models most likely to be used | How AI helps |
+|-----------|---------------|-------------------------------|--------------|
+| 1 | Phases 1-2: envelope/schema + ingestion and zero-trust | Claude Opus 4.5, Claude Sonnet 4.5 | Spec draft and field names (Claude Opus 4.5); serializer/test scaffolds (Claude Sonnet 4.5). I refine and harden; GPT-5.2 for second pass on crypto/schema. |
+| 2 | Phase 3: BLT Exporter integration | Claude Sonnet 4.5, GPT-5.2 | Mapping ScanResult to envelope and retry/backoff (Claude Sonnet 4.5); I hand-check signing/headers/errors; GPT-5.2 to double-check signing and error paths. |
+| 3 | Phase 4: Triage-lite UI | Claude Sonnet 4.5 | Template markup, filter forms, HTMX snippets (Claude Sonnet 4.5); I keep permission/decrypt/queryset logic explicit and reviewed. |
+| 4 | Phases 5-6: CVE plumbing + validation/dedup | Claude Sonnet 4.5 | Repetitive CVE/fingerprint tests and migration boilerplate (Claude Sonnet 4.5); I design fingerprint and validation rules. |
+| 5 | Phase 7 + Phase 8 start: CVE-aware UX + polish | Claude Sonnet 4.5 | UX copy for filters and "Related CVEs", evidence viewer layout (Claude Sonnet 4.5); I enforce accessibility and security. |
+| 6 | Phase 8: triage polish, RFIs, midterm E2E | Claude Sonnet 4.5, Claude Opus 4.5 | RFI template text and demo script (Claude Sonnet 4.5); edge-case enumeration for E2E plan (Claude Opus 4.5). Checkpoint week. |
+| 7 | Phase 9: Fidelity and acceptance gates | Claude Sonnet 4.5 | Fixture generation and query/report boilerplate (Claude Sonnet 4.5); I define thresholds and metrics. |
+| 8 | Phase 10: consensus and resilience | Claude Sonnet 4.5, Claude Opus 4.5 | Quota/rate-limit patterns (Claude Sonnet 4.5); schema and middleware integration choices (Claude Opus 4.5). |
+| 9 | Phase 11: remediation and insights | Claude Sonnet 4.5 | Remediation fragments and "why this matters" copy (Claude Sonnet 4.5); I tune with mentors for OWASP alignment. |
+| 10 | Phase 12: disclosure and reports | Claude Sonnet 4.5 | CSV/PDF templates and snapshot-test harnesses (Claude Sonnet 4.5); I own redaction and verify no leaks. CSV required; PDF optional. |
+| 11 | Phase 13: verified events for downstream | Claude Opus 4.5, Claude Sonnet 4.5 | Event schema variants and pagination patterns (Claude Opus 4.5); API/docs boilerplate (Claude Sonnet 4.5); I lock schema and HMAC/idempotency. |
+| 12 | Phases 14-16: hardening, pilot, v1.0 | Claude Sonnet 4.5, GPT-5.2 | Checklists and runbooks (Claude Sonnet 4.5); final summary draft (Claude Sonnet 4.5); GPT-5.2 second opinion on security-critical diffs; I do final review. |
 
-\* Phase 5 is fast (~2 days) because it reuses the existing CVE cache utilities from PR `#5057`. It is paired with Phase 6 in Week 4 to keep the 12-week timeline realistic. Phase numbers are **implementation milestones**, not weeks; the table above shows how 16 named phases map onto 12 GSoC weeks.
+*Phase 5 is fast (~2 days) because it reuses the existing CVE cache utilities from PR #5057. It is paired with Phase 6 in Week 4 to keep the 12-week timeline realistic. Phase numbers are implementation milestones, not weeks; the table above shows how 16 named phases map onto 12 GSoC weeks.*
+
+---
 
 ### Phase 1 — Envelope and schema
 
@@ -146,11 +141,11 @@ Models (see 9): **Cursor** (IDE); **GPT-4.1** (reasoning/design); **o3-mini** (f
 - Pagination defaults and a DB index strategy for findings written down now, so we're not improvising under pressure later.
 - Serializer stubs for Finding/Envelope and unit tests covering model constraints and validation.
 
-**AI use (where, how, why)**
+**AI use**
 
-- **ztr-finding-1 spec draft:** GPT-4.1 in Cursor — to propose field names, structure, and wording for the spec; I then harden so another implementer could use it without ambiguity.
-- **Serializer stubs and test scaffolds:** o3-mini in Cursor — to generate DRF serializer skeletons and pytest fixtures for model validation; I add edge cases and security assertions.
-- **Second pass on schema/crypto wording:** Claude 3.5 — to review the spec for consistency and crypto clarity before locking the contract.
+The main thing I need AI for here is getting a first draft of the ztr-finding-1 spec on paper quickly. Claude Opus 4.5 handles proposing field names and structure, which I then tighten until another implementer could use it without ambiguity. For the serializer skeletons and pytest fixtures, Claude Sonnet 4.5 handles the repetitive scaffolding while I add the edge cases and security assertions that matter. Before locking the contract, I'll run the spec past GPT-5.2 to check crypto wording and consistency; it's easier to catch those issues before anything is built against the schema.
+
+---
 
 ### Phase 2 — Ingestion and zero-trust
 
@@ -161,11 +156,11 @@ Models (see 9): **Cursor** (IDE); **GPT-4.1** (reasoning/design); **o3-mini** (f
 - TokenAuthentication with per-org scoping, body size caps (<=1 MB), and rate limits wired into the existing throttling middleware.
 - Property tests for the signature window, log redaction, and idempotency, plus one E2E test proving a valid envelope actually ends up as a stored Finding.
 
-**AI use (where, how, why)**
+**AI use**
 
-- **View/serializer boilerplate for `/api/ng/ingest`:** o3-mini in Cursor — to draft DRF view and request/response serializers; I implement verification, replay check, and caps myself and hand-review.
-- **Property-test cases (signature window, idempotency):** o3-mini — to suggest parametrized test cases and assertions; I add replay and concurrency cases and verify log redaction.
-- **Security review of ingestion path:** Claude 3.5 — to double-check timestamp/nonce/signature handling and error paths before merge.
+The DRF view and request/response serializer boilerplate is where Claude Sonnet 4.5 saves the most time. The parts I write myself are the verification logic, the replay check, and the size caps, because those are where bugs matter. For the property tests, I'll use Claude Sonnet 4.5 to suggest parametrized cases and then add the replay and concurrency scenarios myself. The ingestion path gets a GPT-5.2 review before merge, focused on the timestamp/nonce/signature handling and what happens on each error path.
+
+---
 
 ### Phase 3 — BLT Exporter integration
 
@@ -176,10 +171,11 @@ Models (see 9): **Cursor** (IDE); **GPT-4.1** (reasoning/design); **o3-mini** (f
 - Cloudflare secrets configured: `BLT_INGEST_URL`, `SENDER_ID`, `KID`, `SENDER_SECRET`.
 - End-to-end test: Worker scan to KV to BLT exporter to BLT dev server to Finding row in Postgres.
 
-**AI use (where, how, why)**
+**AI use**
 
-- **ScanResult → envelope mapping and retry/backoff helpers:** o3-mini in Cursor — to draft the mapping logic and small retry/backoff utilities; I hand-check all signing, headers, and error handling and own the canonical JSON construction.
-- **Second opinion on signing and error paths:** Claude 3.5 — to review exporter code for HMAC usage, secret handling, and failure behavior so nothing leaks or breaks the Worker.
+The ScanResult to envelope field mapping is mechanical but easy to get wrong in subtle ways, so I'll use Claude Sonnet 4.5 to propose a first-pass mapping and small retry/backoff utilities, then go through every field manually. The canonical JSON construction and HMAC signing I write myself; those aren't places to trust generated code without fully understanding it. GPT-5.2 reviews the finished exporter before it goes in, specifically for secret handling and failure behavior when BLT is unreachable.
+
+---
 
 ### Phase 4 — Triage-lite UI
 
@@ -190,23 +186,25 @@ Models (see 9): **Cursor** (IDE); **GPT-4.1** (reasoning/design); **o3-mini** (f
 - A "Convert to Issue" flow sketched out and wired to the BLT Issue model (CVE columns come later).
 - Org-scoped permissions enforced throughout, with basic template or browser tests for list and detail.
 
-**AI use (where, how, why)**
+**AI use**
 
-- **Template markup and filter form wiring:** o3-mini in Cursor — to generate Django/HTMX template snippets and filter form fields; I keep permission checks, decrypt paths, and queryset logic explicit and review them.
-- **List/detail view structure and tests:** o3-mini — to suggest view structure and basic template or browser test scaffolding; I enforce org-scoping and evidence access rules.
+This phase has a lot of template markup and filter form wiring that Claude Sonnet 4.5 handles fine. What I keep explicit and review carefully are the permission checks, the decrypt paths, and the queryset scoping, because those are where org data leaks happen. For test scaffolding, Claude Sonnet 4.5 gets me the structure; I fill in the permission leakage cases and evidence access assertions.
+
+---
 
 ### Phase 5 — CVE intelligence
 
 **Weekly deliverables**
 
-- Findings (or linked Issues) populated with `cve_id` and `cve_score`, using `normalize_cve_id` and `get_cached_cve_score` from `website/cache/cve_cache.py`, no reinventing the wheel.
+- Findings (or linked Issues) populated with `cve_id` and `cve_score`, using `normalize_cve_id` and `get_cached_cve_score` from `website/cache/cve_cache.py`.
 - CVE columns surfaced in both the triage list and detail views.
 - Mapping tests only; cache-miss fallback is already covered by the existing suite.
 
-**AI use (where, how, why)**
+**AI use**
 
-- **Repetitive CVE mapping tests and view/column wiring:** o3-mini in Cursor — to generate tests that assert CVE ID/score mapping and to suggest where to surface columns in list/detail; I design the integration points and rely on existing cache behavior.
-- **Migration boilerplate for new CVE fields on Finding/Issue:** o3-mini — to draft migration and model changes; I verify indices and constraints.
+Most of this phase is wiring existing utilities into new places, so AI usage is narrow: Claude Sonnet 4.5 for the repetitive mapping tests and migration boilerplate, and suggestions on where to surface the CVE columns in list/detail. The integration points and index constraints I decide myself.
+
+---
 
 ### Phase 6 — Validation and dedup
 
@@ -217,10 +215,11 @@ Models (see 9): **Cursor** (IDE); **GPT-4.1** (reasoning/design); **o3-mini** (f
 - A confidence score field (Decimal [0, 1]) and optional FP checklist fields on Finding.
 - Tests covering duplicate collapse, evidence attachment rollup, and concurrent submission races.
 
-**AI use (where, how, why)**
+**AI use**
 
-- **Fingerprint collision and dedup test cases:** o3-mini in Cursor — to generate repetitive tests for same/different fingerprints, evidence rollup, and concurrent upsert scenarios; I define the fingerprint and validation rules and ensure DB uniqueness is exercised.
-- **Migration and model changes for fingerprint/confidence/FP fields:** o3-mini — to draft migration and field definitions; I set constraints and indexes.
+The fingerprint definition and upsert logic I design from scratch; those decisions have downstream consequences for dedup correctness. Where I use Claude Sonnet 4.5 is generating the repetitive test cases: same fingerprint, different fingerprint, concurrent upsert races. There are enough permutations that generating the scaffolding is worthwhile, and I then go through each case to make sure the DB uniqueness constraint is actually being exercised and not just mocked away.
+
+---
 
 ### Phase 7 — CVE-aware triage UX
 
@@ -231,11 +230,11 @@ Models (see 9): **Cursor** (IDE); **GPT-4.1** (reasoning/design); **o3-mini** (f
 - CVE autocomplete reused in the "Convert to Issue" flow, so people aren't typing CVE IDs by hand.
 - UI tests confirming filters interact correctly and the related CVE list and autocomplete behave as expected.
 
-**AI use (where, how, why)**
+**AI use**
 
-- **UX copy for filters and "Related CVEs" panel:** o3-mini in Cursor — to suggest labels, placeholders, and short descriptions; I enforce accessibility and security (no leaking sensitive data in labels).
-- **Evidence viewer layout and snippet context ideas:** o3-mini — to propose layout and syntax-highlighting approach; I implement and gate behind permissions.
-- **Filter and autocomplete test scaffolding:** o3-mini — to draft UI/test cases for filter interaction and autocomplete; I verify correctness and org-scoping.
+Claude Sonnet 4.5 is useful here for UX copy (filter labels, placeholders, panel headings) and layout ideas for the evidence viewer. I don't need a model to decide what filters to build, but having something suggest wording quickly is genuinely faster than writing it from scratch. I enforce accessibility and make sure nothing in the UI surface leaks sensitive data through labels or autocomplete suggestions.
+
+---
 
 ### Phase 8 — Triage polish and RFI
 
@@ -244,12 +243,13 @@ Models (see 9): **Cursor** (IDE); **GPT-4.1** (reasoning/design); **o3-mini** (f
 - A noticeably better evidence viewer, with improved layout, syntax highlighting or snippet context, something that makes reviewing findings less of a slog.
 - Canned RFI templates as markdown/callout partials, ready to drop into the detail view without touching email plumbing.
 - Tests confirming templates don't leak secrets and render safely.
-- **Midterm checkpoint:** A full E2E demo, Worker scan to BLT Exporter to signed ingestion to Finding to triage list to server-side decrypt to "Convert to Issue" with CVE autopopulated.
+- Midterm checkpoint: A full E2E demo, Worker scan to BLT Exporter to signed ingestion to Finding to triage list to server-side decrypt to "Convert to Issue" with CVE autopopulated.
 
-**AI use (where, how, why)**
+**AI use**
 
-- **RFI template text (markdown/callouts):** o3-mini in Cursor — to draft canned RFI partials; I review for safe rendering and no secret leakage.
-- **Midterm demo script and edge-case list for E2E:** o3-mini for script wording; GPT-4.1 to enumerate edge cases and failure modes for the E2E test plan; I run the demo and own assertions.
+RFI template text is a good fit for Claude Sonnet 4.5 since the output is markdown prose, not logic. I review each template to make sure it renders safely and doesn't reference anything that could leak. For the midterm E2E, Claude Sonnet 4.5 helps draft the demo script while Claude Opus 4.5 is more useful for thinking through failure modes and edge cases in the test plan. I run the actual demo and write the assertions.
+
+---
 
 ### Phase 9 — Fidelity and acceptance gates
 
@@ -257,13 +257,14 @@ Models (see 9): **Cursor** (IDE); **GPT-4.1** (reasoning/design); **o3-mini** (f
 
 - Five to eight curated fixtures with known expected outcomes (for example specific CVE IDs with known severities), the ground truth used to measure the Worker to BLT pipeline.
 - A management command in BLT that queries the Worker `/api/vulnerabilities` endpoint and compares results against expected fixtures, persisting per-fixture metrics (ingestion success, CVE enrichment match).
-- Documented acceptance gates: at least 95 percent ingestion success rate; at least 90 percent CVE match on known CVEs.
+- Documented acceptance gates: at least 95% ingestion success rate; at least 90% CVE match on known CVEs.
 - Scope is pipeline integrity and CVE enrichment accuracy, not scanner rule tuning, which is already the Worker's job.
 
-**AI use (where, how, why)**
+**AI use**
 
-- **Fixture generation and query/report boilerplate:** o3-mini in Cursor — to draft fixture JSON/YAML and management-command structure and reporting output; I define acceptance thresholds and assertions and ensure metrics are computed correctly.
-- **Documentation of acceptance gates:** o3-mini — to draft the gate criteria and run instructions; I validate numbers and wording.
+Fixture generation is tedious, and Claude Sonnet 4.5 speeds it up. The thresholds (95% ingestion, 90% CVE match) I choose based on what the pipeline can actually achieve rather than what sounds good, so those don't come from a model. Same for the management command structure; Claude Sonnet 4.5 can scaffold the reporting output, but I write the assertions and verify the metrics are computed correctly against real fixture data.
+
+---
 
 ### Phase 10 — Consensus and resilience
 
@@ -274,24 +275,26 @@ Models (see 9): **Cursor** (IDE); **GPT-4.1** (reasoning/design); **o3-mini** (f
 - Per-org/hour quotas via DB counters, hooked into the existing throttling and IPRestrictMiddleware; batch ingestion stays in DB transactions only, no new queue.
 - Tests for the reconfirmation gate and for 429/Retry-After behavior under load.
 
-**AI use (where, how, why)**
+**AI use**
 
-- **Quota counter and rate-limit test patterns:** o3-mini in Cursor — to suggest test structure for 429/Retry-After and quota exhaustion; I implement DB schema and hook into existing middleware.
-- **Reconfirmation gate and confidence logic design:** GPT-4.1 — to explore design options (when to require second signal, how to weight confidence); I choose the exact rules and implement.
+The reconfirmation gate design is something I want to think through with Claude Opus 4.5 before committing to an implementation, specifically when to require a second signal and how to weight confidence. There are real tradeoffs between false negative rate and friction that are worth exploring before anything is built. For the rate-limit and 429 test structure, Claude Sonnet 4.5 handles the boilerplate; I implement the DB schema and make sure it hooks into the existing middleware correctly rather than adding a parallel path.
+
+---
 
 ### Phase 11 — Remediation and insights
 
 **Weekly deliverables**
 
 - Markdown remediation fragments for each rule type, with OWASP links, static content, nothing dynamic.
-- CVE-based enrichment when `cve_id` is present: advisory links and OWASP context so reviewers do not have to leave the page.
+- CVE-based enrichment when `cve_id` is present: advisory links and OWASP context so reviewers don't have to leave the page.
 - "Why this matters" callouts and remediation hints surfaced in the triage detail view and report output.
 - Tests confirming fragments render safely and map correctly to the right rules and CVEs.
 
-**AI use (where, how, why)**
+**AI use**
 
-- **Initial remediation fragments and "why this matters" copy:** o3-mini in Cursor — to draft markdown fragments and short callouts per rule type; I tune with mentors for tone, accuracy, and OWASP alignment and ensure no dynamic execution.
-- **Test scaffolding for fragment mapping and safe render:** o3-mini — to generate tests that assert correct rule/CVE mapping and safe rendering; I add XSS/injection cases.
+This is one of the phases where AI earns its keep most clearly. Drafting remediation prose for each rule type is time-consuming, and Claude Sonnet 4.5 gets a reasonable first pass on paper quickly. What I bring is tuning the tone and accuracy with mentors, verifying OWASP link targets are correct, and making sure nothing in the fragments is dynamic or executable. The rendering safety tests I write myself since those are the ones that actually catch XSS.
+
+---
 
 ### Phase 12 — Disclosure helpers and reports
 
@@ -299,12 +302,13 @@ Models (see 9): **Cursor** (IDE); **GPT-4.1** (reasoning/design); **o3-mini** (f
 
 - `security.txt` detection (fetch/parse or a stub) integrated into "Convert to Issue" and the report flow, so disclosure contacts surface automatically.
 - CSV export for findings with CVE metadata included; snapshot tests confirming sensitive evidence does not leak in plain text.
-- PDF export (for example WeasyPrint, timeboxed to 0.5–1 week); snapshot tests confirming the same redaction guarantees hold.
+- PDF export (for example WeasyPrint, timeboxed to 0.5-1 week); snapshot tests confirming the same redaction guarantees hold.
 
-**AI use (where, how, why)**
+**AI use**
 
-- **CSV/PDF export templates and snapshot-test harnesses:** o3-mini in Cursor — to draft export templates and test structure for snapshot comparisons; I own redaction rules and verify no sensitive evidence in output.
-- **security.txt stub or parser scaffolding:** o3-mini — to suggest integration points and minimal fetch/parse logic; I implement and gate behind existing permissions.
+Export templates and snapshot-test harnesses are mechanical work that Claude Sonnet 4.5 handles well. The redaction rules I define myself and verify manually against the snapshot output; the test passing isn't enough if I haven't checked what's actually in the file. For `security.txt`, Claude Sonnet 4.5 can suggest the fetch/parse structure, but the integration point and permission gating I implement directly.
+
+---
 
 ### Phase 13 — Verified events for downstream
 
@@ -315,10 +319,11 @@ Models (see 9): **Cursor** (IDE); **GPT-4.1** (reasoning/design); **o3-mini** (f
 - A read-only API for event retrieval with pagination and filtering, plus consumption docs written specifically for Rewards (B) and RepoTrust (X).
 - Tests covering event emission, idempotency, payload shape, and webhook signature verification.
 
-**AI use (where, how, why)**
+**AI use**
 
-- **Event schema variants and pagination/filter patterns:** GPT-4.1 in Cursor — to explore payload shapes and filter options for consumers; I lock the final schema, HMAC details, and idempotency behavior.
-- **Outbox model, API, and consumption doc boilerplate:** o3-mini — to draft model, serializers, and doc structure for Rewards/RepoTrust; I implement delivery and signing and verify against existing HMAC helpers.
+I'll use Claude Opus 4.5 to explore payload shape options before locking the schema. The downstream consumers (Rewards, RepoTrust) have different needs and it's worth thinking through the tradeoffs before anything is built against it. Once the schema is decided, Claude Sonnet 4.5 handles the model, serializer, and doc boilerplate. The HMAC signing and idempotency behavior I implement myself, reusing the existing helpers from `website/views/user.py` rather than generating new signing code.
+
+---
 
 ### Phase 14 — Hardening and security review
 
@@ -328,10 +333,11 @@ Models (see 9): **Cursor** (IDE); **GPT-4.1** (reasoning/design); **o3-mini** (f
 - Dead code and over-generalized code cleaned out; docs updated to reflect what is actually implemented.
 - A checklist or short report summarizing what was reviewed and what was fixed.
 
-**AI use (where, how, why)**
+**AI use**
 
-- **Security review checklist and report draft:** o3-mini in Cursor — to generate a structured checklist (key handling, nonce, redaction, permissions, cache) and a report template; I perform the actual review and fill in findings and fixes.
-- **Second opinion on security-critical diffs:** Claude 3.5 — to review changed code paths before final merge; I own the final sign-off.
+Claude Sonnet 4.5 is useful for generating a structured review checklist so nothing gets missed. The actual review I do myself: reading the code, checking log statements, tracing permission paths. GPT-5.2 gets a look at any changed security-critical code before final merge, as a second set of eyes rather than a substitute for my own review.
+
+---
 
 ### Phase 15 — Pilot prep and docs
 
@@ -341,11 +347,11 @@ Models (see 9): **Cursor** (IDE); **GPT-4.1** (reasoning/design); **o3-mini** (f
 - A migration rollback note and data deletion playbook for evidence blobs.
 - User, admin, setup, and contribution docs polished and reviewed end-to-end.
 
-**AI use (where, how, why)**
+**AI use**
 
-- **Pilot checklist and runbook drafts:** o3-mini in Cursor — to draft configuration steps, runbooks, and rollback plan structure; I validate against actual deployment and add org-specific notes.
-- **Migration rollback and data deletion playbook:** o3-mini — to draft the playbook text; I verify commands and ordering.
-- **Doc polish (user, admin, setup, contribution):** o3-mini — to suggest improvements and fill gaps; I review end-to-end for accuracy.
+Runbook and checklist drafting is where Claude Sonnet 4.5 saves real time; getting structure on paper fast matters here. I validate every step against the actual deployment and add org-specific notes. The migration rollback playbook I verify command by command since the order matters and a wrong step is hard to recover from.
+
+---
 
 ### Phase 16 — Pilot run and final polish
 
@@ -354,28 +360,27 @@ Models (see 9): **Cursor** (IDE); **GPT-4.1** (reasoning/design); **o3-mini** (f
 - A live pilot with one to two orgs, with real metrics collected: time-to-triage, FP/FN feedback, and how useful the CVE filters and reports actually are in practice.
 - High-priority fixes applied based on feedback, v1.0 tagged, and a short "what was delivered" summary ready for the GSoC final report.
 
-**AI use (where, how, why)**
+**AI use**
 
-- **"What we delivered" summary draft:** o3-mini in Cursor — to draft the GSoC final-report summary and feature list; I tailor to actual deliverables and pilot feedback.
-- **Final pass on security-critical changes from pilot:** Claude 3.5 — to review any patches from pilot feedback before v1.0 tag; I do the final merge decision.
+The final report summary is a good fit for Claude Sonnet 4.5 to draft since it's largely a factual account of what was built. I tailor it to actual deliverables and pilot feedback rather than what was planned. Any patches from pilot feedback with security implications get a GPT-5.2 review before the v1.0 tag.
 
 ---
 
 ## 5. Flexibility and change management
 
-NetGuardian is designed to stay flexible for maintainers and the community. If we collectively decide mid-project that a different library or pattern makes more sense, I will isolate third-party dependencies behind small wrappers so swapping them does not ripple through callers. Any non-trivial change gets a short Markdown note first (what, why, alternatives, schedule impact) before I touch anything. The acceptance criteria in this proposal (ingestion invariants, fidelity gates, verified-event schema, and so on) act as contracts; if we refactor, the tests stay the same and still have to pass.
+NetGuardian is designed to stay flexible for maintainers and the community. If we collectively decide mid-project that a different library or pattern makes more sense, I'll isolate third-party dependencies behind small wrappers so swapping them doesn't ripple through callers. Any non-trivial change gets a short Markdown note first (what, why, alternatives, schedule impact) before I touch anything. The acceptance criteria in this proposal (ingestion invariants, fidelity gates, verified-event schema) act as contracts; if we refactor, the tests stay the same and still have to pass.
 
 ---
 
-## 6. Testing strategy (beyond PR `#5057`)
+## 6. Testing strategy (beyond PR #5057)
 
-The ingestion tests cover the full envelope lifecycle: valid submission, expired timestamp, future-issued, and replay, with the replay case exercised via DB uniqueness so it holds under concurrent load rather than just in a single-threaded test. Signature mismatch and canonicalization drift are tested separately because they are easy to conflate. Size and MIME cap enforcement, filename sanitization, and access logging on evidence reads each get their own cases.
+The ingestion tests cover the full envelope lifecycle: valid submission, expired timestamp, future-issued, and replay, with the replay case exercised via DB uniqueness so it holds under concurrent load rather than just in a single-threaded test. Signature mismatch and canonicalization drift are tested separately because they're easy to conflate. Size and MIME cap enforcement, filename sanitization, and access logging on evidence reads each get their own cases.
 
 For the exporter, the main test is the full Worker to BLT E2E path. Beyond that: retry behavior when BLT is down, idempotency via nonce reuse, and how the exporter handles a malformed scan result without taking the Worker down with it.
 
 Dedup tests focus on the fingerprint: the same fingerprint should collapse into one Finding, and concurrent submissions of the same fingerprint should also collapse cleanly rather than racing to create duplicates.
 
-On the triage side: pagination boundaries, org permission leakage (Org A user cannot see Org B findings), CVE filter correctness reusing the `normalize_cve_id` and cache paths from PR `#5057`, and basic cache-poisoning resistance. For consensus and resilience: the critical reconfirmation gate and 429/Retry-After behavior under load. For reports: CSV and PDF snapshot tests that confirm sensitive evidence does not appear in plain text output.
+On the triage side: pagination boundaries, org permission leakage (Org A user cannot see Org B findings), CVE filter correctness reusing the `normalize_cve_id` and cache paths from PR #5057, and basic cache-poisoning resistance. For consensus and resilience: the critical reconfirmation gate and 429/Retry-After behavior under load. For reports: CSV and PDF snapshot tests that confirm sensitive evidence does not appear in plain text output.
 
 ---
 
@@ -388,21 +393,21 @@ On the triage side: pagination boundaries, org permission leakage (Org A user ca
 
 ## 8. Cross-project integration
 
-NetGuardian emits a signed webhook for Verified Events with a stable, versioned schema. I'll write concrete consumption examples specifically for BLT-Rewards and RepoTrust, not just the schema, but actual working examples so they're not guessing at edge cases. NetGuardian stops at emitting clean events; downstream scoring, gamification, and education logic are out of scope and should not live here.
+NetGuardian emits a signed webhook for Verified Events with a stable, versioned schema. I'll write concrete consumption examples specifically for BLT-Rewards and RepoTrust, not just the schema, but working examples so they're not guessing at edge cases. NetGuardian stops at emitting clean events; downstream scoring, gamification, and education logic are out of scope and should not live here.
 
 Both the envelope and event payloads carry a `version` field and a `dedupe_key` for idempotent consumption. Webhook signing reuses the existing HMAC helpers from `website/views/user.py`, the same pattern BLT already uses for GitHub webhooks, so there is no new signing infrastructure to maintain.
 
 ---
 
-## 9. AI tooling, usage and flexibility
+## 9. AI tooling
 
-**IDE (fixed) and models (most likely / tentative / subjective)**
+**IDE (fixed) and models (tentative)**
 
-- **IDE:** Cursor.
-- **Strong reasoning (architecture, threat modeling, tricky refactors):** e.g. GPT-4.1 — used when design choices and edge cases matter; I validate all output.
-- **Fast edits and boilerplate:** e.g. o3-mini — used for inline edits, serializers, migrations, docstrings, type hints, and repetitive scaffolding; I review before commit.
-- **Second opinion (security-sensitive code and docs):** e.g. Claude 3.5 Sonnet — used to double-check ingestion, signing, nonce handling, permissions, and evidence redaction; I never ship without understanding and hand-review.
+- IDE: Cursor.
+- Strong reasoning (architecture, threat modeling, tricky refactors): Claude Opus 4.5, used when design choices and edge cases matter.
+- Fast edits and boilerplate: Claude Sonnet 4.5, used for inline edits, serializers, migrations, docstrings, type hints, and repetitive scaffolding.
+- Second opinion on security-sensitive code and docs: GPT-5.2, used to double-check ingestion, signing, nonce handling, permissions, and evidence redaction.
 
-The constraint I'm holding to: every security-critical path (ingestion, signing, nonce handling, permissions, evidence redaction) gets hand-reviewed and test-covered before it merges. AI is useful for drafts and suggestions, but I will not ship something I don't fully understand just because a model generated it confidently.
+These replace the models I had in an earlier draft. Claude Opus 4.5 leads SWE-bench at 77-82% and is widely cited as the best available model for architecture planning and agentic/multi-step reasoning in coding contexts, which makes it a better fit for the design-heavy phases than GPT-4.1. Claude Sonnet 4.5 replaces o3-mini as the fast workhorse; developers using Cursor and Claude Code consistently describe it as the default for quick iteration, and it handles the boilerplate-heavy phases well without needing a heavier model. GPT-5.2 replaces Claude 3.5 Sonnet for security review; its strong multi-language handling and code correctness make it a solid second opinion on signing, nonce handling, and redaction paths specifically.
 
-In practice, this means using AI for scaffolding and spec text that I then tighten up, repetitive test generation and template markup while I keep permission and queryset logic explicit, and later for checklists, runbook drafts, and the final summary. Throughout, it handles mechanical work like renames, docstrings, and type hints, while I own the actual design decisions. Per-phase granularity (where AI is used, which model, how, and why) is spelled out under each phase's deliverables below.
+Every security-critical path (ingestion, signing, nonce handling, permissions, evidence redaction) gets hand-reviewed and test-covered before it merges. AI is useful for drafts and suggestions, but I won't ship something I don't fully understand just because a model generated it confidently. The per-phase AI notes above describe specifically where each model is used and why.
