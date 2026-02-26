@@ -297,3 +297,51 @@ Signed webhook for Verified Events with stable, versioned schema; concrete consu
 
 **Worker (existing):** `src/worker.py`, `src/scanners/*.py`, `src/models/*.py`, `ARCHITECTURE.md`, `API.md`.  
 **BLT:** `website/cache/cve_cache.py` (PR #5057), `website/models.py` (Issue.cve_id/cve_score), `blt/middleware/throttling.py` & `ip_restrict.py`, `website/views/user.py` (HMAC); **new:** `website/netguardian/` (models, views, templates).
+
+---
+
+## 11. AI tooling, usage & flexibility
+
+### AI tooling and models
+
+- **IDE:** I will use the **Cursor** IDE as my primary environment for BLT and Worker changes.
+- **Models (via Cursor / API):**
+  - A **strong reasoning model** (e.g., GPT‑4.1 or equivalent) for architecture reviews, threat modeling, and tricky refactors.
+  - A **fast edit model** (e.g., o3‑mini or similar) for quick inline edits, renames, and boilerplate generation.
+  - When needed, a **second opinion model** (e.g., Claude 3.5‑class) for reviewing security-sensitive logic or docs.
+- **Constraints:**
+  - All **security‑critical code paths** (ingestion, signing, nonce handling, permissions, evidence redaction) are **hand‑reviewed** and covered by tests before merge.
+  - AI is used for drafts and suggestions; I remain responsible for the final design, code, and tests.
+
+### How AI is used by week
+
+This table summarizes how I’ll use AI support alongside the weekly plan in section 5:
+
+| GSoC Week | Phase(s) | How AI helps (Cursor + models above) |
+|----------|----------|----------------------------------------|
+| 1 | 1–2 (envelope, ingestion skeleton) | Drafting the first `ztr-finding-1` spec text, suggesting field names, and generating initial serializer/test scaffolds that I then refine and harden. |
+| 2 | 3 (BLT Exporter in Worker) | Proposing mapping code from Worker `ScanResult` → envelope JSON and generating small retry/backoff helpers; I hand‑check all signing, headers, and error paths. |
+| 3 | 4 (triage-lite UI) | Assisting with template markup, filter form wiring, and HTMX snippets while I keep permission checks, decrypt paths, and queryset logic explicit and reviewed. |
+| 4 | 5–6 (CVE plumbing, dedup) | Generating repetitive tests for CVE mapping and fingerprint collisions and helping with migration boilerplate; I design the fingerprint and validation rules myself. |
+| 5 | 7 + 8 start (CVE-aware UX, polish) | UX copy suggestions for filters and “Related CVEs” panel, plus layout ideas for the evidence viewer; I enforce accessibility and security constraints. |
+| 6 | 8 (polish, RFIs, midterm E2E) | Drafting RFI template text and midterm demo script; helping enumerate edge cases for the E2E test plan. |
+| 7 | 9 (fidelity & gates) | Assisting with fixture generation and query/report boilerplate; I define the acceptance thresholds and assertions and ensure metrics are computed correctly. |
+| 8 | 10 (consensus & resilience) | Suggesting patterns for quota counters and rate‑limit tests; I choose the exact DB schema and ensure we respect existing throttling/IP middleware. |
+| 9 | 11 (remediation & insights) | Drafting initial remediation fragments and “why this matters” copy, which I then tune with mentors for tone, accuracy, and OWASP alignment. |
+| 10 | 12 (disclosure & reports) | Helping with CSV/PDF export templates and snapshot‑test harnesses; I own the redaction rules and verify no sensitive evidence leaks. |
+| 11 | 13 (verified events) | Proposing event schema variants and pagination filter patterns; I lock in the final schema, HMAC details, and idempotency behavior. |
+| 12 | 14–16 (hardening, pilot, polish) | Assisting with checklists, pilot runbooks, and the final “what we delivered” summary; I personally review diffs on security‑critical code and test coverage. |
+
+Throughout, I will also use AI for **mechanical** tasks—rename refactors, docstring cleanups, type‑hint suggestions—while keeping core logic changes small and reviewable.
+
+### Flexibility for refactors & library changes
+
+To keep NetGuardian **flexible for maintainers and the community** (for example, if we collectively decide mid‑project that a different library or pattern is better), I’ll follow this approach:
+
+- **Decouple choices:** Wherever possible, I isolate third‑party or helper libraries behind small wrapper functions or services so we can swap implementations without changing callers.
+- **Change RFCs, not surprises:** For any non‑trivial refactor or library swap, I’ll first write a short Markdown **change note** (what/why, alternatives, impact on schedule) and get async mentor feedback before executing it.
+- **Tests as contracts:** The acceptance criteria in this proposal (ingestion invariants, fidelity gates, verified‑event schema, etc.) act as **contracts**. If we refactor or change a library, the tests stay the same and must still pass.
+- **Slack in the schedule:** Weeks 5–9 intentionally include some slack (UX polish, remediation text, analytics) where small structural refactors can be folded in without breaking the overall 12‑week delivery.
+- **AI‑assisted refactors, human‑owned design:** When a refactor is approved, I will use AI to propose refactor patches (e.g., migrating one helper library to another) but will review each diff carefully and rerun the full test suite before merging.
+
+This keeps the **scope and outcomes stable** (zero‑trust ingestion, CVE‑aware triage, verified events), while leaving room for maintainers and the community to influence **how** we get there (specific libraries, patterns, and UX details) as the project evolves.
