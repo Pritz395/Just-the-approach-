@@ -98,9 +98,9 @@ Worker already exists; GSoC adds the Exporter and all BLT-side pieces. Flow: Wor
 
 Every envelope must carry `version`, `sender_id`, `issued_at` (UTC), `nonce`, `signature`, `payload_digest`, `alg`, and either `payload_ciphertext` or a `plaintext_mode` flag.
 
-Signatures are HMAC-SHA256 over canonical JSON, chosen because it works natively in Cloudflare Workers without heavy crypto dependencies. Anything outside a +-300 second clock window gets rejected outright, and nonces must be strictly monotonic per `sender_id` within that TTL. The `unique(sender_id, nonce)` constraint is enforced at the DB level, not just in application code, so replay protection holds even under concurrent requests. Ed25519 is on the table for future BLT-side verification but isn't needed for the Worker in this project.
+Signatures are HMAC-SHA256 over canonical JSON, chosen because it works natively in Cloudflare Workers without heavy crypto dependencies. Sign over the canonical JSON of the envelope with the signature field omitted (RFC 8785-style key ordering; UTF-8; no extra whitespace). Nonces MUST be unique per `sender_id`. The server enforces `unique(sender_id, nonce)` in the database and rejects replays within a ±5-minute `issued_at` window. Recommended nonce format: `<unix_ts>-<random>` (ordering is not required; uniqueness is). Ed25519 is on the table for future BLT-side verification but isn't needed for the Worker in this project.
 
-For evidence, NetGuardian stores only the digest and size, never the raw ciphertext or plaintext, and never logs either under any circumstances. Inbound inputs are normalized and length-capped before they touch anything, and logs redact secrets and long fields by default. All Finding reads are org-scoped at the query level, evidence access requires an explicit permission check and gets logged every time, and "Convert to Issue" enforces both org ownership and rate limits before it goes through.
+For evidence, NetGuardian stores the encrypted bytes at rest (server-side keys), plus the SHA-256 digest and size. Neither ciphertext nor plaintext is ever logged, and templates/logs redact long or sensitive fields. Inbound inputs are normalized and length-capped before they touch anything. Max envelope body size: 1 MiB by default (org-configurable); requests exceeding the cap are rejected with 413 Payload Too Large. All Finding reads are org-scoped at the query level, evidence access requires an explicit permission check and gets logged every time, and "Convert to Issue" enforces both org ownership and rate limits before it goes through.
 
 These invariants are treated as contracts: tests are written against them, and any refactor or library change has to preserve them.
 
@@ -153,7 +153,7 @@ The main thing I need AI for here is getting a first draft of the ztr-finding-1 
 
 - A working ingestion API (`/api/ng/ingest`) that accepts signed findings and verifies signatures and timestamps on the server side.
 - Solid replay protection: Envelope unique on `(sender_id, nonce)`, clock skew capped at +-5 minutes, `received_at`/`validated_at` stored, and anything expired or replayed rejected cleanly.
-- TokenAuthentication with per-org scoping, body size caps (<=1 MB), and rate limits wired into the existing throttling middleware.
+- TokenAuthentication with per-org scoping, body size caps (<=1 MB), and rate limits wired into the existing throttling middleware. Ingest HMAC header: `X-BLT-Signature: sha256=<hex>`, `X-BLT-Timestamp: <unix_ts>`. `POST /api/ng/ingest/batch` returns a per-item array of `{index, status, error_code?}` so the Worker can retry only failures.
 - Property tests for the signature window, log redaction, and idempotency, plus one E2E test proving a valid envelope actually ends up as a stored Finding.
 
 **AI use**
@@ -395,7 +395,7 @@ On the triage side: pagination boundaries, org permission leakage (Org A user ca
 
 NetGuardian emits a signed webhook for Verified Events with a stable, versioned schema. I'll write concrete consumption examples specifically for BLT-Rewards and RepoTrust, not just the schema, but working examples so they're not guessing at edge cases. NetGuardian stops at emitting clean events; downstream scoring, gamification, and education logic are out of scope and should not live here.
 
-Both the envelope and event payloads carry a `version` field and a `dedupe_key` for idempotent consumption. Webhook signing reuses the existing HMAC helpers from `website/views/user.py`, the same pattern BLT already uses for GitHub webhooks, so there is no new signing infrastructure to maintain.
+Both the envelope and event payloads carry a `version` field and a `dedupe_key` for idempotent consumption. Webhook signing reuses the existing HMAC helpers from `website/views/user.py`, the same pattern BLT already uses for GitHub webhooks, so there is no new signing infrastructure to maintain. Webhook HMAC header: `X-BLT-Webhook-Signature: sha256=<hex>`, `X-BLT-Webhook-Timestamp: <unix_ts>`.
 
 ---
 
@@ -410,7 +410,7 @@ Both the envelope and event payloads carry a `version` field and a `dedupe_key` 
 
 **Why these models**
 
-- Claude Opus 4.5 leads SWE-bench at 77-82% and is widely cited as the best available model for architecture planning and agentic/multi-step reasoning in coding contexts, making it the right fit for design-heavy phases.
+- Claude Opus 4.5 is a state-of-the-art reasoning model for architecture planning and agentic/multi-step reasoning in coding contexts, making it the right fit for design-heavy phases.
 - Claude Sonnet 4.5 is the fast workhorse; developers using Cursor and Claude Code consistently describe it as the default for quick iteration, and it handles boilerplate-heavy phases well without needing a heavier model.
 - GPT-5.2 covers security review; its strong multi-language handling and code correctness make it a solid second opinion on signing, nonce handling, and redaction paths specifically.
 
