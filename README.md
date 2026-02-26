@@ -117,20 +117,22 @@ These invariants are treated as contracts: tests are written against them, and a
 
 **GSoC 12-week calendar and AI usage**
 
-| GSoC Week | Focus (phases) | How AI helps (Cursor + models above) | Notes |
-|-----------|----------------|----------------------------------------|-------|
-| 1 | Phases 1–2: envelope/schema + ingestion and zero-trust | Drafting the first ztr-finding-1 spec text, suggesting field names, and generating initial serializer and test scaffolds that I then refine and harden. | As-is |
-| 2 | Phase 3: BLT Exporter integration | Proposing mapping code from Worker `ScanResult` to envelope JSON and generating small retry/backoff helpers; I hand-check all signing, headers, and error paths. | Full 5-day sprint in Worker |
-| 3 | Phase 4: Triage-lite UI | Assisting with template markup, filter form wiring, and HTMX snippets while I keep permission checks, decrypt paths, and queryset logic explicit and reviewed. | |
-| 4 | Phases 5–6: CVE plumbing + validation/dedup | Generating repetitive tests for CVE mapping and fingerprint collisions and helping with migration boilerplate; I design the fingerprint and validation rules myself. | Phase 5 fast (reuse PR `#5057`)\* |
-| 5 | Phase 7 + Phase 8 start: CVE-aware UX + polish | Suggesting UX copy for filters and the "Related CVEs" panel, plus layout ideas for the evidence viewer; I enforce accessibility and security constraints. | |
-| 6 | Phase 8: triage polish, RFIs, midterm E2E | Drafting RFI template text and the midterm demo script; helping enumerate edge cases for the E2E test plan. | Checkpoint week |
-| 7 | Phase 9: Worker to BLT fidelity and acceptance gates | Assisting with fixture generation and query/report boilerplate; I define the acceptance thresholds and assertions and ensure metrics are computed correctly. | |
-| 8 | Phase 10: consensus and resilience | Suggesting patterns for quota counters and rate-limit tests; I choose the exact DB schema and ensure we respect existing throttling and IP middleware. | |
-| 9 | Phase 11: remediation and insights | Drafting initial remediation fragments and "why this matters" copy, which I then tune with mentors for tone, accuracy, and OWASP alignment. | |
-| 10 | Phase 12: disclosure and reports | Helping with CSV/PDF export templates and snapshot-test harnesses; I own the redaction rules and verify no sensitive evidence leaks. | CSV required; PDF optional |
-| 11 | Phase 13: verified events for downstream | Proposing event schema variants and pagination filter patterns; I lock in the final schema, HMAC details, and idempotency behavior. | |
-| 12 | Phases 14–16: hardening, pilot prep, pilot run, v1.0 | Assisting with checklists, pilot runbooks, and the final "what we delivered" summary; I personally review diffs on security-critical code and test coverage. | |
+Models (see §9): **Cursor** (IDE); **GPT-4.1** (reasoning/design); **o3-mini** (fast edits/boilerplate); **Claude 3.5 Sonnet** (second opinion on security).
+
+| GSoC Week | Focus (phases) | Models used | How AI helps (where, how, why — details under each phase below) |
+|-----------|----------------|-------------|------------------------------------------------------------------|
+| 1 | Phases 1–2: envelope/schema + ingestion and zero-trust | GPT-4.1, o3-mini | Spec draft and field names (GPT-4.1); serializer/test scaffolds (o3-mini). I refine and harden; Claude 3.5 for second pass on crypto/schema. |
+| 2 | Phase 3: BLT Exporter integration | o3-mini, Claude 3.5 | Mapping ScanResult→envelope and retry/backoff (o3-mini); I hand-check signing/headers/errors; Claude 3.5 to double-check signing and error paths. |
+| 3 | Phase 4: Triage-lite UI | o3-mini | Template markup, filter forms, HTMX snippets (o3-mini); I keep permission/decrypt/queryset logic explicit and reviewed. |
+| 4 | Phases 5–6: CVE plumbing + validation/dedup | o3-mini | Repetitive CVE/fingerprint tests and migration boilerplate (o3-mini); I design fingerprint and validation rules. |
+| 5 | Phase 7 + Phase 8 start: CVE-aware UX + polish | o3-mini | UX copy for filters and "Related CVEs", evidence viewer layout (o3-mini); I enforce a11y and security. |
+| 6 | Phase 8: triage polish, RFIs, midterm E2E | o3-mini, GPT-4.1 | RFI template text and demo script (o3-mini); edge-case enumeration for E2E plan (GPT-4.1). Checkpoint week. |
+| 7 | Phase 9: Fidelity and acceptance gates | o3-mini | Fixture generation and query/report boilerplate (o3-mini); I define thresholds and metrics. |
+| 8 | Phase 10: consensus and resilience | o3-mini, GPT-4.1 | Quota/rate-limit patterns (o3-mini); schema and middleware integration choices (GPT-4.1). |
+| 9 | Phase 11: remediation and insights | o3-mini | Remediation fragments and "why this matters" copy (o3-mini); I tune with mentors for OWASP alignment. |
+| 10 | Phase 12: disclosure and reports | o3-mini | CSV/PDF templates and snapshot-test harnesses (o3-mini); I own redaction and verify no leaks. CSV required; PDF optional. |
+| 11 | Phase 13: verified events for downstream | GPT-4.1, o3-mini | Event schema variants and pagination patterns (GPT-4.1); API/docs boilerplate (o3-mini); I lock schema and HMAC/idempotency. |
+| 12 | Phases 14–16: hardening, pilot, v1.0 | o3-mini, Claude 3.5 | Checklists and runbooks (o3-mini); final summary draft (o3-mini); Claude 3.5 second opinion on security-critical diffs; I do final review. |
 
 \* Phase 5 is fast (~2 days) because it reuses the existing CVE cache utilities from PR `#5057`. It is paired with Phase 6 in Week 4 to keep the 12-week timeline realistic. Phase numbers are **implementation milestones**, not weeks; the table above shows how 16 named phases map onto 12 GSoC weeks.
 
@@ -144,6 +146,12 @@ These invariants are treated as contracts: tests are written against them, and a
 - Pagination defaults and a DB index strategy for findings written down now, so we're not improvising under pressure later.
 - Serializer stubs for Finding/Envelope and unit tests covering model constraints and validation.
 
+**AI use (where, how, why)**
+
+- **ztr-finding-1 spec draft:** GPT-4.1 in Cursor — to propose field names, structure, and wording for the spec; I then harden so another implementer could use it without ambiguity.
+- **Serializer stubs and test scaffolds:** o3-mini in Cursor — to generate DRF serializer skeletons and pytest fixtures for model validation; I add edge cases and security assertions.
+- **Second pass on schema/crypto wording:** Claude 3.5 — to review the spec for consistency and crypto clarity before locking the contract.
+
 ### Phase 2 — Ingestion and zero-trust
 
 **Weekly deliverables**
@@ -152,6 +160,12 @@ These invariants are treated as contracts: tests are written against them, and a
 - Solid replay protection: Envelope unique on `(sender_id, nonce)`, clock skew capped at +-5 minutes, `received_at`/`validated_at` stored, and anything expired or replayed rejected cleanly.
 - TokenAuthentication with per-org scoping, body size caps (<=1 MB), and rate limits wired into the existing throttling middleware.
 - Property tests for the signature window, log redaction, and idempotency, plus one E2E test proving a valid envelope actually ends up as a stored Finding.
+
+**AI use (where, how, why)**
+
+- **View/serializer boilerplate for `/api/ng/ingest`:** o3-mini in Cursor — to draft DRF view and request/response serializers; I implement verification, replay check, and caps myself and hand-review.
+- **Property-test cases (signature window, idempotency):** o3-mini — to suggest parametrized test cases and assertions; I add replay and concurrency cases and verify log redaction.
+- **Security review of ingestion path:** Claude 3.5 — to double-check timestamp/nonce/signature handling and error paths before merge.
 
 ### Phase 3 — BLT Exporter integration
 
@@ -162,6 +176,11 @@ These invariants are treated as contracts: tests are written against them, and a
 - Cloudflare secrets configured: `BLT_INGEST_URL`, `SENDER_ID`, `KID`, `SENDER_SECRET`.
 - End-to-end test: Worker scan to KV to BLT exporter to BLT dev server to Finding row in Postgres.
 
+**AI use (where, how, why)**
+
+- **ScanResult → envelope mapping and retry/backoff helpers:** o3-mini in Cursor — to draft the mapping logic and small retry/backoff utilities; I hand-check all signing, headers, and error handling and own the canonical JSON construction.
+- **Second opinion on signing and error paths:** Claude 3.5 — to review exporter code for HMAC usage, secret handling, and failure behavior so nothing leaks or breaks the Worker.
+
 ### Phase 4 — Triage-lite UI
 
 **Weekly deliverables**
@@ -171,6 +190,11 @@ These invariants are treated as contracts: tests are written against them, and a
 - A "Convert to Issue" flow sketched out and wired to the BLT Issue model (CVE columns come later).
 - Org-scoped permissions enforced throughout, with basic template or browser tests for list and detail.
 
+**AI use (where, how, why)**
+
+- **Template markup and filter form wiring:** o3-mini in Cursor — to generate Django/HTMX template snippets and filter form fields; I keep permission checks, decrypt paths, and queryset logic explicit and review them.
+- **List/detail view structure and tests:** o3-mini — to suggest view structure and basic template or browser test scaffolding; I enforce org-scoping and evidence access rules.
+
 ### Phase 5 — CVE intelligence
 
 **Weekly deliverables**
@@ -178,6 +202,11 @@ These invariants are treated as contracts: tests are written against them, and a
 - Findings (or linked Issues) populated with `cve_id` and `cve_score`, using `normalize_cve_id` and `get_cached_cve_score` from `website/cache/cve_cache.py`, no reinventing the wheel.
 - CVE columns surfaced in both the triage list and detail views.
 - Mapping tests only; cache-miss fallback is already covered by the existing suite.
+
+**AI use (where, how, why)**
+
+- **Repetitive CVE mapping tests and view/column wiring:** o3-mini in Cursor — to generate tests that assert CVE ID/score mapping and to suggest where to surface columns in list/detail; I design the integration points and rely on existing cache behavior.
+- **Migration boilerplate for new CVE fields on Finding/Issue:** o3-mini — to draft migration and model changes; I verify indices and constraints.
 
 ### Phase 6 — Validation and dedup
 
@@ -188,6 +217,11 @@ These invariants are treated as contracts: tests are written against them, and a
 - A confidence score field (Decimal [0, 1]) and optional FP checklist fields on Finding.
 - Tests covering duplicate collapse, evidence attachment rollup, and concurrent submission races.
 
+**AI use (where, how, why)**
+
+- **Fingerprint collision and dedup test cases:** o3-mini in Cursor — to generate repetitive tests for same/different fingerprints, evidence rollup, and concurrent upsert scenarios; I define the fingerprint and validation rules and ensure DB uniqueness is exercised.
+- **Migration and model changes for fingerprint/confidence/FP fields:** o3-mini — to draft migration and field definitions; I set constraints and indexes.
+
 ### Phase 7 — CVE-aware triage UX
 
 **Weekly deliverables**
@@ -196,6 +230,12 @@ These invariants are treated as contracts: tests are written against them, and a
 - A "Related CVEs" side panel rendered server-side from the existing CVE index, no new infrastructure.
 - CVE autocomplete reused in the "Convert to Issue" flow, so people aren't typing CVE IDs by hand.
 - UI tests confirming filters interact correctly and the related CVE list and autocomplete behave as expected.
+
+**AI use (where, how, why)**
+
+- **UX copy for filters and "Related CVEs" panel:** o3-mini in Cursor — to suggest labels, placeholders, and short descriptions; I enforce accessibility and security (no leaking sensitive data in labels).
+- **Evidence viewer layout and snippet context ideas:** o3-mini — to propose layout and syntax-highlighting approach; I implement and gate behind permissions.
+- **Filter and autocomplete test scaffolding:** o3-mini — to draft UI/test cases for filter interaction and autocomplete; I verify correctness and org-scoping.
 
 ### Phase 8 — Triage polish and RFI
 
@@ -206,6 +246,11 @@ These invariants are treated as contracts: tests are written against them, and a
 - Tests confirming templates don't leak secrets and render safely.
 - **Midterm checkpoint:** A full E2E demo, Worker scan to BLT Exporter to signed ingestion to Finding to triage list to server-side decrypt to "Convert to Issue" with CVE autopopulated.
 
+**AI use (where, how, why)**
+
+- **RFI template text (markdown/callouts):** o3-mini in Cursor — to draft canned RFI partials; I review for safe rendering and no secret leakage.
+- **Midterm demo script and edge-case list for E2E:** o3-mini for script wording; GPT-4.1 to enumerate edge cases and failure modes for the E2E test plan; I run the demo and own assertions.
+
 ### Phase 9 — Fidelity and acceptance gates
 
 **Weekly deliverables**
@@ -214,6 +259,11 @@ These invariants are treated as contracts: tests are written against them, and a
 - A management command in BLT that queries the Worker `/api/vulnerabilities` endpoint and compares results against expected fixtures, persisting per-fixture metrics (ingestion success, CVE enrichment match).
 - Documented acceptance gates: at least 95 percent ingestion success rate; at least 90 percent CVE match on known CVEs.
 - Scope is pipeline integrity and CVE enrichment accuracy, not scanner rule tuning, which is already the Worker's job.
+
+**AI use (where, how, why)**
+
+- **Fixture generation and query/report boilerplate:** o3-mini in Cursor — to draft fixture JSON/YAML and management-command structure and reporting output; I define acceptance thresholds and assertions and ensure metrics are computed correctly.
+- **Documentation of acceptance gates:** o3-mini — to draft the gate criteria and run instructions; I validate numbers and wording.
 
 ### Phase 10 — Consensus and resilience
 
@@ -224,6 +274,11 @@ These invariants are treated as contracts: tests are written against them, and a
 - Per-org/hour quotas via DB counters, hooked into the existing throttling and IPRestrictMiddleware; batch ingestion stays in DB transactions only, no new queue.
 - Tests for the reconfirmation gate and for 429/Retry-After behavior under load.
 
+**AI use (where, how, why)**
+
+- **Quota counter and rate-limit test patterns:** o3-mini in Cursor — to suggest test structure for 429/Retry-After and quota exhaustion; I implement DB schema and hook into existing middleware.
+- **Reconfirmation gate and confidence logic design:** GPT-4.1 — to explore design options (when to require second signal, how to weight confidence); I choose the exact rules and implement.
+
 ### Phase 11 — Remediation and insights
 
 **Weekly deliverables**
@@ -233,6 +288,11 @@ These invariants are treated as contracts: tests are written against them, and a
 - "Why this matters" callouts and remediation hints surfaced in the triage detail view and report output.
 - Tests confirming fragments render safely and map correctly to the right rules and CVEs.
 
+**AI use (where, how, why)**
+
+- **Initial remediation fragments and "why this matters" copy:** o3-mini in Cursor — to draft markdown fragments and short callouts per rule type; I tune with mentors for tone, accuracy, and OWASP alignment and ensure no dynamic execution.
+- **Test scaffolding for fragment mapping and safe render:** o3-mini — to generate tests that assert correct rule/CVE mapping and safe rendering; I add XSS/injection cases.
+
 ### Phase 12 — Disclosure helpers and reports
 
 **Weekly deliverables**
@@ -240,6 +300,11 @@ These invariants are treated as contracts: tests are written against them, and a
 - `security.txt` detection (fetch/parse or a stub) integrated into "Convert to Issue" and the report flow, so disclosure contacts surface automatically.
 - CSV export for findings with CVE metadata included; snapshot tests confirming sensitive evidence does not leak in plain text.
 - PDF export (for example WeasyPrint, timeboxed to 0.5–1 week); snapshot tests confirming the same redaction guarantees hold.
+
+**AI use (where, how, why)**
+
+- **CSV/PDF export templates and snapshot-test harnesses:** o3-mini in Cursor — to draft export templates and test structure for snapshot comparisons; I own redaction rules and verify no sensitive evidence in output.
+- **security.txt stub or parser scaffolding:** o3-mini — to suggest integration points and minimal fetch/parse logic; I implement and gate behind existing permissions.
 
 ### Phase 13 — Verified events for downstream
 
@@ -250,6 +315,11 @@ These invariants are treated as contracts: tests are written against them, and a
 - A read-only API for event retrieval with pagination and filtering, plus consumption docs written specifically for Rewards (B) and RepoTrust (X).
 - Tests covering event emission, idempotency, payload shape, and webhook signature verification.
 
+**AI use (where, how, why)**
+
+- **Event schema variants and pagination/filter patterns:** GPT-4.1 in Cursor — to explore payload shapes and filter options for consumers; I lock the final schema, HMAC details, and idempotency behavior.
+- **Outbox model, API, and consumption doc boilerplate:** o3-mini — to draft model, serializers, and doc structure for Rewards/RepoTrust; I implement delivery and signing and verify against existing HMAC helpers.
+
 ### Phase 14 — Hardening and security review
 
 **Weekly deliverables**
@@ -257,6 +327,11 @@ These invariants are treated as contracts: tests are written against them, and a
 - A proper security review pass: key handling, nonce uniqueness, evidence redaction in logs and templates, permission checks everywhere, and cache-poisoning resistance.
 - Dead code and over-generalized code cleaned out; docs updated to reflect what is actually implemented.
 - A checklist or short report summarizing what was reviewed and what was fixed.
+
+**AI use (where, how, why)**
+
+- **Security review checklist and report draft:** o3-mini in Cursor — to generate a structured checklist (key handling, nonce, redaction, permissions, cache) and a report template; I perform the actual review and fill in findings and fixes.
+- **Second opinion on security-critical diffs:** Claude 3.5 — to review changed code paths before final merge; I own the final sign-off.
 
 ### Phase 15 — Pilot prep and docs
 
@@ -266,12 +341,23 @@ These invariants are treated as contracts: tests are written against them, and a
 - A migration rollback note and data deletion playbook for evidence blobs.
 - User, admin, setup, and contribution docs polished and reviewed end-to-end.
 
+**AI use (where, how, why)**
+
+- **Pilot checklist and runbook drafts:** o3-mini in Cursor — to draft configuration steps, runbooks, and rollback plan structure; I validate against actual deployment and add org-specific notes.
+- **Migration rollback and data deletion playbook:** o3-mini — to draft the playbook text; I verify commands and ordering.
+- **Doc polish (user, admin, setup, contribution):** o3-mini — to suggest improvements and fill gaps; I review end-to-end for accuracy.
+
 ### Phase 16 — Pilot run and final polish
 
 **Weekly deliverables**
 
 - A live pilot with one to two orgs, with real metrics collected: time-to-triage, FP/FN feedback, and how useful the CVE filters and reports actually are in practice.
 - High-priority fixes applied based on feedback, v1.0 tagged, and a short "what was delivered" summary ready for the GSoC final report.
+
+**AI use (where, how, why)**
+
+- **"What we delivered" summary draft:** o3-mini in Cursor — to draft the GSoC final-report summary and feature list; I tailor to actual deliverables and pilot feedback.
+- **Final pass on security-critical changes from pilot:** Claude 3.5 — to review any patches from pilot feedback before v1.0 tag; I do the final merge decision.
 
 ---
 
@@ -310,8 +396,13 @@ Both the envelope and event payloads carry a `version` field and a `dedupe_key` 
 
 ## 9. AI tooling, usage and flexibility
 
-I'll be using Cursor as my primary IDE. For heavier tasks like architecture reviews, threat modeling, and tricky refactors, I'll lean on a strong reasoning model. For quick inline edits and boilerplate I'll use a faster model, and for a second opinion on security-sensitive code or docs I'll occasionally pull in a different model.
+**IDE and models**
+
+- **IDE:** Cursor.
+- **Strong reasoning (architecture, threat modeling, tricky refactors):** e.g. GPT-4.1 — used when design choices and edge cases matter; I validate all output.
+- **Fast edits and boilerplate:** e.g. o3-mini — used for inline edits, serializers, migrations, docstrings, type hints, and repetitive scaffolding; I review before commit.
+- **Second opinion (security-sensitive code and docs):** e.g. Claude 3.5 Sonnet — used to double-check ingestion, signing, nonce handling, permissions, and evidence redaction; I never ship without understanding and hand-review.
 
 The constraint I'm holding to: every security-critical path (ingestion, signing, nonce handling, permissions, evidence redaction) gets hand-reviewed and test-covered before it merges. AI is useful for drafts and suggestions, but I will not ship something I don't fully understand just because a model generated it confidently.
 
-In practice, this means using AI for scaffolding and spec text that I then tighten up, repetitive test generation and template markup while I keep permission and queryset logic explicit, and later for checklists, runbook drafts, and the final summary. Throughout, it handles mechanical work like renames, docstrings, and type hints, while I own the actual design decisions.
+In practice, this means using AI for scaffolding and spec text that I then tighten up, repetitive test generation and template markup while I keep permission and queryset logic explicit, and later for checklists, runbook drafts, and the final summary. Throughout, it handles mechanical work like renames, docstrings, and type hints, while I own the actual design decisions. Per-phase granularity (where AI is used, which model, how, and why) is spelled out under each phase's deliverables below.
