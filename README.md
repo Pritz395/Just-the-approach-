@@ -117,9 +117,9 @@ These invariants are treated as contracts: tests are written against them, and a
 
 **GSoC 12-week calendar and AI usage**
 
-Models (see §9): **Cursor** (IDE); **GPT-4.1** (reasoning/design); **o3-mini** (fast edits/boilerplate); **Claude 3.5 Sonnet** (second opinion on security).
+Models (see 9): **Cursor** (IDE); **GPT-4.1** (reasoning/design); **o3-mini** (fast edits/boilerplate); **Claude 3.5 Sonnet** (second opinion on security).
 
-| GSoC Week | Focus (phases) | Models used | How AI helps (where, how, why — details under each phase below) |
+| GSoC Week | Focus (phases) | Models most likely to be used | How AI helps (where, how, why — details under each phase below) |
 |-----------|----------------|-------------|------------------------------------------------------------------|
 | 1 | Phases 1–2: envelope/schema + ingestion and zero-trust | GPT-4.1, o3-mini | Spec draft and field names (GPT-4.1); serializer/test scaffolds (o3-mini). I refine and harden; Claude 3.5 for second pass on crypto/schema. |
 | 2 | Phase 3: BLT Exporter integration | o3-mini, Claude 3.5 | Mapping ScanResult→envelope and retry/backoff (o3-mini); I hand-check signing/headers/errors; Claude 3.5 to double-check signing and error paths. |
@@ -396,7 +396,7 @@ Both the envelope and event payloads carry a `version` field and a `dedupe_key` 
 
 ## 9. AI tooling, usage and flexibility
 
-**IDE and models**
+**IDE (fixed) and models (most likely / tentative / subjective)**
 
 - **IDE:** Cursor.
 - **Strong reasoning (architecture, threat modeling, tricky refactors):** e.g. GPT-4.1 — used when design choices and edge cases matter; I validate all output.
