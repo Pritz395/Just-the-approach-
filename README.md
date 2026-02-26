@@ -115,43 +115,24 @@ These invariants are treated as contracts: tests are written against them, and a
 
 ## 4. 12-week implementation plan (phases 1–16)
 
-**GSoC 12-week calendar**
+**GSoC 12-week calendar and AI usage**
 
-| GSoC Week | Focus | Notes |
-|-----------|-------|-------|
-| 1 | Phases 1–2: envelope/schema + ingestion and zero-trust | As-is |
-| 2 | Phase 3 only: BLT Exporter integration | Full 5-day sprint in Worker |
-| 3 | Phase 4 only: Triage-lite UI | |
-| 4 | Phases 5–6: CVE plumbing + validation/dedup | Phase 5 fast (reuse PR `#5057`)\* |
-| 5 | Phase 7 + Phase 8 start | CVE-aware UX + polish |
-| 6 | Phase 8: triage polish, RFIs, midterm E2E | Checkpoint week |
-| 7 | Phase 9: Worker to BLT fidelity and acceptance gates | |
-| 8 | Phase 10: consensus and resilience | |
-| 9 | Phase 11: remediation and insights | |
-| 10 | Phase 12: disclosure and reports (CSV required; PDF optional) | |
-| 11 | Phase 13: verified events for downstream | |
-| 12 | Phases 14–16: hardening + pilot prep + pilot run + v1.0 | |
+| GSoC Week | Focus (phases) | How AI helps (Cursor + models above) | Notes |
+|-----------|----------------|----------------------------------------|-------|
+| 1 | Phases 1–2: envelope/schema + ingestion and zero-trust | Drafting the first ztr-finding-1 spec text, suggesting field names, and generating initial serializer and test scaffolds that I then refine and harden. | As-is |
+| 2 | Phase 3: BLT Exporter integration | Proposing mapping code from Worker `ScanResult` to envelope JSON and generating small retry/backoff helpers; I hand-check all signing, headers, and error paths. | Full 5-day sprint in Worker |
+| 3 | Phase 4: Triage-lite UI | Assisting with template markup, filter form wiring, and HTMX snippets while I keep permission checks, decrypt paths, and queryset logic explicit and reviewed. | |
+| 4 | Phases 5–6: CVE plumbing + validation/dedup | Generating repetitive tests for CVE mapping and fingerprint collisions and helping with migration boilerplate; I design the fingerprint and validation rules myself. | Phase 5 fast (reuse PR `#5057`)\* |
+| 5 | Phase 7 + Phase 8 start: CVE-aware UX + polish | Suggesting UX copy for filters and the "Related CVEs" panel, plus layout ideas for the evidence viewer; I enforce accessibility and security constraints. | |
+| 6 | Phase 8: triage polish, RFIs, midterm E2E | Drafting RFI template text and the midterm demo script; helping enumerate edge cases for the E2E test plan. | Checkpoint week |
+| 7 | Phase 9: Worker to BLT fidelity and acceptance gates | Assisting with fixture generation and query/report boilerplate; I define the acceptance thresholds and assertions and ensure metrics are computed correctly. | |
+| 8 | Phase 10: consensus and resilience | Suggesting patterns for quota counters and rate-limit tests; I choose the exact DB schema and ensure we respect existing throttling and IP middleware. | |
+| 9 | Phase 11: remediation and insights | Drafting initial remediation fragments and "why this matters" copy, which I then tune with mentors for tone, accuracy, and OWASP alignment. | |
+| 10 | Phase 12: disclosure and reports | Helping with CSV/PDF export templates and snapshot-test harnesses; I own the redaction rules and verify no sensitive evidence leaks. | CSV required; PDF optional |
+| 11 | Phase 13: verified events for downstream | Proposing event schema variants and pagination filter patterns; I lock in the final schema, HMAC details, and idempotency behavior. | |
+| 12 | Phases 14–16: hardening, pilot prep, pilot run, v1.0 | Assisting with checklists, pilot runbooks, and the final "what we delivered" summary; I personally review diffs on security-critical code and test coverage. | |
 
-\* Phase 5 is fast (~2 days) because it reuses the existing CVE cache utilities from PR `#5057`. It is paired with Phase 6 in Week 4 to keep the 12-week timeline realistic.
-
-**AI support by week**
-
-Alongside the implementation work, I will use AI in a focused way each week:
-
-| GSoC Week | Phase(s) | How AI helps (Cursor + models above) |
-|-----------|----------|----------------------------------------|
-| 1 | 1–2 (envelope, ingestion skeleton) | Drafting the first ztr-finding-1 spec text, suggesting field names, and generating initial serializer and test scaffolds that I then refine and harden. |
-| 2 | 3 (BLT Exporter in Worker) | Proposing mapping code from Worker `ScanResult` to envelope JSON and generating small retry/backoff helpers; I hand-check all signing, headers, and error paths. |
-| 3 | 4 (triage-lite UI) | Assisting with template markup, filter form wiring, and HTMX snippets while I keep permission checks, decrypt paths, and queryset logic explicit and reviewed. |
-| 4 | 5–6 (CVE plumbing, dedup) | Generating repetitive tests for CVE mapping and fingerprint collisions and helping with migration boilerplate; I design the fingerprint and validation rules myself. |
-| 5 | 7 + 8 start (CVE-aware UX, polish) | Suggesting UX copy for filters and the "Related CVEs" panel, plus layout ideas for the evidence viewer; I enforce accessibility and security constraints. |
-| 6 | 8 (polish, RFIs, midterm E2E) | Drafting RFI template text and the midterm demo script; helping enumerate edge cases for the E2E test plan. |
-| 7 | 9 (fidelity and gates) | Assisting with fixture generation and query/report boilerplate; I define the acceptance thresholds and assertions and ensure metrics are computed correctly. |
-| 8 | 10 (consensus and resilience) | Suggesting patterns for quota counters and rate-limit tests; I choose the exact DB schema and ensure we respect existing throttling and IP middleware. |
-| 9 | 11 (remediation and insights) | Drafting initial remediation fragments and "why this matters" copy, which I then tune with mentors for tone, accuracy, and OWASP alignment. |
-| 10 | 12 (disclosure and reports) | Helping with CSV/PDF export templates and snapshot-test harnesses; I own the redaction rules and verify no sensitive evidence leaks. |
-| 11 | 13 (verified events) | Proposing event schema variants and pagination filter patterns; I lock in the final schema, HMAC details, and idempotency behavior. |
-| 12 | 14–16 (hardening, pilot, polish) | Assisting with checklists, pilot runbooks, and the final "what we delivered" summary; I personally review diffs on security-critical code and test coverage. |
+\* Phase 5 is fast (~2 days) because it reuses the existing CVE cache utilities from PR `#5057`. It is paired with Phase 6 in Week 4 to keep the 12-week timeline realistic. Phase numbers are **implementation milestones**, not weeks; the table above shows how 16 named phases map onto 12 GSoC weeks.
 
 ### Phase 1 — Envelope and schema
 
