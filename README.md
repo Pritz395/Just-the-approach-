@@ -408,6 +408,10 @@ Both the envelope and event payloads carry a `version` field and a `dedupe_key` 
 - Fast edits and boilerplate: Claude Sonnet 4.5, used for inline edits, serializers, migrations, docstrings, type hints, and repetitive scaffolding.
 - Second opinion on security-sensitive code and docs: GPT-5.2, used to double-check ingestion, signing, nonce handling, permissions, and evidence redaction.
 
-These replace the models I had in an earlier draft. Claude Opus 4.5 leads SWE-bench at 77-82% and is widely cited as the best available model for architecture planning and agentic/multi-step reasoning in coding contexts, which makes it a better fit for the design-heavy phases than GPT-4.1. Claude Sonnet 4.5 replaces o3-mini as the fast workhorse; developers using Cursor and Claude Code consistently describe it as the default for quick iteration, and it handles the boilerplate-heavy phases well without needing a heavier model. GPT-5.2 replaces Claude 3.5 Sonnet for security review; its strong multi-language handling and code correctness make it a solid second opinion on signing, nonce handling, and redaction paths specifically.
+**Why these models**
+
+- Claude Opus 4.5 leads SWE-bench at 77-82% and is widely cited as the best available model for architecture planning and agentic/multi-step reasoning in coding contexts, making it the right fit for design-heavy phases.
+- Claude Sonnet 4.5 is the fast workhorse; developers using Cursor and Claude Code consistently describe it as the default for quick iteration, and it handles boilerplate-heavy phases well without needing a heavier model.
+- GPT-5.2 covers security review; its strong multi-language handling and code correctness make it a solid second opinion on signing, nonce handling, and redaction paths specifically.
 
 Every security-critical path (ingestion, signing, nonce handling, permissions, evidence redaction) gets hand-reviewed and test-covered before it merges. AI is useful for drafts and suggestions, but I won't ship something I don't fully understand just because a model generated it confidently. The per-phase AI notes above describe specifically where each model is used and why.
