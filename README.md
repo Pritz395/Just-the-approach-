@@ -134,6 +134,25 @@ These invariants are treated as contracts: tests are written against them, and a
 
 \* Phase 5 is fast (~2 days) because it reuses the existing CVE cache utilities from PR `#5057`. It is paired with Phase 6 in Week 4 to keep the 12-week timeline realistic.
 
+**AI support by week**
+
+Alongside the implementation work, I will use AI in a focused way each week:
+
+| GSoC Week | Phase(s) | How AI helps (Cursor + models above) |
+|-----------|----------|----------------------------------------|
+| 1 | 1–2 (envelope, ingestion skeleton) | Drafting the first ztr-finding-1 spec text, suggesting field names, and generating initial serializer and test scaffolds that I then refine and harden. |
+| 2 | 3 (BLT Exporter in Worker) | Proposing mapping code from Worker `ScanResult` to envelope JSON and generating small retry/backoff helpers; I hand-check all signing, headers, and error paths. |
+| 3 | 4 (triage-lite UI) | Assisting with template markup, filter form wiring, and HTMX snippets while I keep permission checks, decrypt paths, and queryset logic explicit and reviewed. |
+| 4 | 5–6 (CVE plumbing, dedup) | Generating repetitive tests for CVE mapping and fingerprint collisions and helping with migration boilerplate; I design the fingerprint and validation rules myself. |
+| 5 | 7 + 8 start (CVE-aware UX, polish) | Suggesting UX copy for filters and the "Related CVEs" panel, plus layout ideas for the evidence viewer; I enforce accessibility and security constraints. |
+| 6 | 8 (polish, RFIs, midterm E2E) | Drafting RFI template text and the midterm demo script; helping enumerate edge cases for the E2E test plan. |
+| 7 | 9 (fidelity and gates) | Assisting with fixture generation and query/report boilerplate; I define the acceptance thresholds and assertions and ensure metrics are computed correctly. |
+| 8 | 10 (consensus and resilience) | Suggesting patterns for quota counters and rate-limit tests; I choose the exact DB schema and ensure we respect existing throttling and IP middleware. |
+| 9 | 11 (remediation and insights) | Drafting initial remediation fragments and "why this matters" copy, which I then tune with mentors for tone, accuracy, and OWASP alignment. |
+| 10 | 12 (disclosure and reports) | Helping with CSV/PDF export templates and snapshot-test harnesses; I own the redaction rules and verify no sensitive evidence leaks. |
+| 11 | 13 (verified events) | Proposing event schema variants and pagination filter patterns; I lock in the final schema, HMAC details, and idempotency behavior. |
+| 12 | 14–16 (hardening, pilot, polish) | Assisting with checklists, pilot runbooks, and the final "what we delivered" summary; I personally review diffs on security-critical code and test coverage. |
+
 ### Phase 1 — Envelope and schema
 
 **Weekly deliverables**
@@ -275,7 +294,13 @@ These invariants are treated as contracts: tests are written against them, and a
 
 ---
 
-## 5. Testing strategy (beyond PR `#5057`)
+## 5. Flexibility and change management
+
+NetGuardian is designed to stay flexible for maintainers and the community. If we collectively decide mid-project that a different library or pattern makes more sense, I will isolate third-party dependencies behind small wrappers so swapping them does not ripple through callers. Any non-trivial change gets a short Markdown note first (what, why, alternatives, schedule impact) before I touch anything. The acceptance criteria in this proposal (ingestion invariants, fidelity gates, verified-event schema, and so on) act as contracts; if we refactor, the tests stay the same and still have to pass.
+
+---
+
+## 6. Testing strategy (beyond PR `#5057`)
 
 The ingestion tests cover the full envelope lifecycle: valid submission, expired timestamp, future-issued, and replay, with the replay case exercised via DB uniqueness so it holds under concurrent load rather than just in a single-threaded test. Signature mismatch and canonicalization drift are tested separately because they are easy to conflate. Size and MIME cap enforcement, filename sanitization, and access logging on evidence reads each get their own cases.
 
@@ -287,14 +312,14 @@ On the triage side: pagination boundaries, org permission leakage (Org A user ca
 
 ---
 
-## 6. Milestone checkpoints
+## 7. Milestone checkpoints
 
 - **Midterm (after Phase 8):** E2E demo — Worker scan to BLT Exporter to signed ingestion to Finding to triage list to server-side decrypt to "Convert to Issue" with CVE autopopulated.
 - **Final (after Phase 16):** Full Worker to BLT pipeline live plus verified-events webhook plus fidelity metrics plus pilot feedback.
 
 ---
 
-## 7. Cross-project integration
+## 8. Cross-project integration
 
 NetGuardian emits a signed webhook for Verified Events with a stable, versioned schema. I'll write concrete consumption examples specifically for BLT-Rewards and RepoTrust, not just the schema, but actual working examples so they're not guessing at edge cases. NetGuardian stops at emitting clean events; downstream scoring, gamification, and education logic are out of scope and should not live here.
 
@@ -302,12 +327,10 @@ Both the envelope and event payloads carry a `version` field and a `dedupe_key` 
 
 ---
 
-## 8. AI tooling, usage and flexibility
+## 9. AI tooling, usage and flexibility
 
 I'll be using Cursor as my primary IDE. For heavier tasks like architecture reviews, threat modeling, and tricky refactors, I'll lean on a strong reasoning model. For quick inline edits and boilerplate I'll use a faster model, and for a second opinion on security-sensitive code or docs I'll occasionally pull in a different model.
 
 The constraint I'm holding to: every security-critical path (ingestion, signing, nonce handling, permissions, evidence redaction) gets hand-reviewed and test-covered before it merges. AI is useful for drafts and suggestions, but I will not ship something I don't fully understand just because a model generated it confidently.
 
-In practice, early weeks use AI mostly for scaffolding and spec text that I then tighten up; middle weeks for repetitive test generation and template markup while I keep permission and queryset logic explicit; later weeks for checklists, runbook drafts, and the final summary. Throughout, it handles mechanical work like renames, docstrings, and type hints, while I own the actual design decisions.
-
-On flexibility: if we decide mid-project that a different library or pattern makes more sense, I'll isolate third-party dependencies behind small wrappers so swapping them does not ripple through callers. Any non-trivial change gets a short Markdown note first (what, why, alternatives, schedule impact) before I touch anything. The acceptance criteria in this proposal act as contracts; if we refactor, the tests stay the same and still have to pass.
+In practice, this means using AI for scaffolding and spec text that I then tighten up, repetitive test generation and template markup while I keep permission and queryset logic explicit, and later for checklists, runbook drafts, and the final summary. Throughout, it handles mechanical work like renames, docstrings, and type hints, while I own the actual design decisions.
