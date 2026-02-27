@@ -22,6 +22,8 @@ The split is clean: the Worker handles discovery, scanning, and KV; BLT handles 
 
 NetGuardian as a whole also includes a Flutter desktop client that lets users run the Worker locally on their own machines and send findings into BLT through the same signed ingestion API. In this proposal I focus on the server/Worker pipeline, but I’ll keep the Flutter client as a first-class entry point when designing APIs, auth, and UX.
 
+Non-goals for the GSoC core scope include shipping the full Flutter desktop client; instead, I’ll stabilize the ingestion contract, auth, and size caps so the Flutter app can integrate cleanly as a companion deliverable.
+
 **Prerequisites verified**
 
 - Python 3.11+, Django 5.x dev environment.
@@ -96,6 +98,33 @@ Worker already exists; GSoC adds the Exporter and all BLT-side pieces. Flow: Wor
 - BLT (existing): `website/cache/cve_cache.py` (PR #5057) for `normalize_cve_id()` and `get_cached_cve_score()`; `website/models.py` for `Issue.cve_id` and `Issue.cve_score`; `blt/middleware/throttling.py` and `blt/middleware/ip_restrict.py` for rate limiting and IP controls; `website/views/user.py` for the HMAC pattern used by GitHub webhooks.
 - BLT (new): `website/netguardian/` (models, views, templates for Finding, Envelope, EvidenceBlob, EventOutbox, triage UI, and ingestion endpoints).
 
+### Local Flutter client (desktop companion)
+
+**Goal**
+
+Let users run NetGuardian locally (Windows/macOS/Linux) with a simple UI and send signed findings to BLT, so the pipeline scales globally without everyone needing to self-host BLT.
+
+**Responsibilities (MVP)**
+
+- Run a small local “agent” flow: select target(s), run curated detectors (for example Semgrep via bundled or runtime install), review a preview, then send.
+- Build `ztr-finding-1` envelopes, HMAC-SHA256 sign them with org-scoped sender credentials, and POST to BLT `/api/ng/ingest` (or `/api/ng/ingest/batch` when available).
+- Provide an offline queue and retry for flaky networks, with evidence size caps and redaction toggles before send.
+- Keep minimal local history and link back to BLT triage for deep review.
+
+**Interfaces used**
+
+- Ingestion: `POST /api/ng/ingest` and `POST /api/ng/ingest/batch`.
+- Token/key management: org-level `sender_id` / `kid` / secret obtained from BLT.
+- Envelope spec: `ztr-finding-1` (same as the Worker and any CLI/CI agent).
+
+**Packaging**
+
+- Flutter desktop app (Windows/macOS/Linux) with an auto-update channel and optional portable mode.
+
+**Scope note**
+
+The Flutter client is a companion deliverable for adoption at scale. Its development can proceed in parallel and is not required to land the core GSoC server milestones (ingestion, triage, CVE enrichment, events). I’ll keep the server-side contracts stable so the Flutter client can integrate at any time.
+
 ---
 
 ## 3. Security invariants and design (ztr-finding-1)
@@ -118,20 +147,20 @@ See section 9 for how I plan to use AI across these phases; I keep this table fo
 
 | GSoC Week | Focus (phases) |
 |-----------|----------------|
-| 1 | Phases 1-2: envelope/schema + ingestion and zero-trust |
-| 2 | Phase 3: BLT Exporter integration |
-| 3 | Phase 4: Triage-lite UI |
-| 4 | Phases 5-6: CVE plumbing + validation/dedup |
+| 1 | Phases 1–2: envelope/schema + ingestion and zero-trust |
+| 2 | Phase 3: BLT Exporter integration (Worker → BLT) |
+| 3 | Phase 4: Triage-lite UI (list/detail, perms, decrypt, Convert to Issue) |
+| 4 | Phases 5–6: CVE plumbing (PR #5057 reuse) + validation/dedup |
 | 5 | Phase 7 + Phase 8 start: CVE-aware UX + polish |
-| 6 | Phase 8: triage polish, RFIs, midterm E2E |
-| 7 | Phase 9: Fidelity and acceptance gates |
-| 8 | Phase 10: consensus and resilience |
-| 9 | Phase 11: remediation and insights |
-| 10 | Phase 12: disclosure and reports |
-| 11 | Phase 13: verified events for downstream |
-| 12 | Phases 14-16: hardening, pilot, v1.0 |
+| 6 | Phase 8: triage polish, RFIs, midterm E2E demo |
+| 7 | Phase 9: Worker→BLT fidelity & acceptance gates |
+| 8 | Phase 10: consensus & resilience (quotas, 429/Retry-After) |
+| 9 | Phase 11: remediation & insights (static fragments + OWASP links) |
+| 10 | Phase 12: disclosure helpers & reports (CSV req; PDF opt/timeboxed) |
+| 11 | Phase 13: verified events/webhooks + read-only events API |
+| 12 | Phases 14–16: hardening, pilot, docs, v1.0 tag |
 
-*Phase 5 is fast (~2 days) because it reuses the existing CVE cache utilities from PR #5057. It is paired with Phase 6 in Week 4 to keep the 12-week timeline realistic. Phase numbers are implementation milestones, not weeks; the table above shows how 16 named phases map onto 12 GSoC weeks.*
+*Phase 5 is fast (~2 days) because it reuses the existing CVE cache utilities from PR #5057. It is paired with Phase 6 in Week 4 to keep the 12-week timeline realistic. Phase numbers are implementation milestones, not weeks; the table above shows how 16 named phases map onto 12 GSoC weeks. The Flutter desktop client proceeds as a parallel companion deliverable against the stable ingestion contract.*
 
 ---
 
@@ -139,7 +168,7 @@ See section 9 for how I plan to use AI across these phases; I keep this table fo
 
 **Weekly deliverables**
 
-Task:- locking the envelope format and data model so everything that follows has a clear contract.
+This week is about locking the envelope format and data model so everything that follows has a clear contract.
 
 - A written ztr-finding-1 spec covering fields, signatures, timestamps, and nonces, detailed enough that someone else could implement against it without coming back with questions.
 - Database/ORM models for Finding, Envelope, EvidenceBlob, and SenderKey with migrations applied and everything wired into admin.
@@ -157,7 +186,7 @@ The main thing I need AI for here is getting a first draft of the ztr-finding-1 
 
 **Weekly deliverables**
 
-Task:- make the ingestion path real: signed envelopes in, replay-safe storage, and no trust without verification.
+Here we make the ingestion path real: signed envelopes in, replay-safe storage, and no trust without verification.
 
 - A working ingestion API (`/api/ng/ingest`) that accepts signed findings and verifies signatures and timestamps on the server side.
 - Solid replay protection: Envelope unique on `(sender_id, nonce)`, clock skew capped at +-5 minutes, `received_at`/`validated_at` stored, and anything expired or replayed rejected cleanly.
@@ -174,7 +203,7 @@ The DRF view and request/response serializer boilerplate is where Claude Sonnet 
 
 **Weekly deliverables**
 
-Task:- Worker gets a BLT exporter that turns scan results into signed envelopes and POSTs them; if BLT is down, the Worker keeps going.
+The Worker gets a BLT exporter that turns scan results into signed envelopes and POSTs them; if BLT is down, the Worker keeps going.
 
 - A `BLTExporter` class in BLT-NetGuardian Worker (`src/exporters/blt_exporter.py`) that maps Worker ScanResult to ztr-finding-1 envelopes, signs with HMAC-SHA256 using Cloudflare Workers stdlib (no heavy crypto libs), and POSTs to BLT `/api/ng/ingest` with retry/timeout.
 - An integration point in `src/worker.py` via `handle_result_ingestion()` that calls the exporter after KV storage, best-effort, so the Worker keeps going if BLT is unreachable.
@@ -191,7 +220,7 @@ The ScanResult to envelope field mapping is mechanical but easy to get wrong in 
 
 **Weekly deliverables**
 
-Task:- Triage becomes real: a list you can actually use, a detail view that decrypts evidence safely, and a path from finding to Issue.
+Triage becomes real: a list you can actually use, a detail view that decrypts evidence safely, and a path from finding to Issue.
 
 - A Finding list view with severity/rule/target filters, pagination, and sort, something you can actually sit down and use to triage.
 - A detail view that decrypts evidence server-side, gates it behind explicit permissions, logs every access, and renders it in redacted form.
@@ -208,7 +237,7 @@ This phase has a lot of template markup and filter form wiring that Claude Sonne
 
 **Weekly deliverables**
 
-Task:- wire in the existing CVE cache so findings (and later Issues) get `cve_id` and `cve_score` without reinventing the wheel.
+We wire in the existing CVE cache so findings (and later Issues) get `cve_id` and `cve_score` without reinventing the wheel.
 
 - Findings (or linked Issues) populated with `cve_id` and `cve_score`, using `normalize_cve_id` and `get_cached_cve_score` from `website/cache/cve_cache.py`.
 - CVE columns surfaced in both the triage list and detail views.
@@ -224,7 +253,7 @@ Most of this phase is wiring existing utilities into new places, so AI usage is 
 
 **Weekly deliverables**
 
-Task:- Same finding from multiple runs shouldn’t mean duplicate rows; we add a fingerprint, upsert by it, and give findings a confidence score.
+Same finding from multiple runs shouldn’t mean duplicate rows; we add a fingerprint, upsert by it, and give findings a confidence score.
 
 - A fingerprint defined as `(rule_id, target_url, optional selector, evidence_digest)` with a unique DB index backing it.
 - Idempotent submission that upserts by fingerprint, so new evidence attaches to an existing Finding instead of creating a duplicate.
@@ -241,7 +270,7 @@ The fingerprint definition and upsert logic I design from scratch; those decisio
 
 **Weekly deliverables**
 
-Task:- Triage gets CVE filters, a “Related CVEs” panel, and autocomplete on Convert to Issue so people aren’t typing CVE IDs by hand.
+Triage gets CVE filters, a “Related CVEs” panel, and autocomplete on Convert to Issue so people aren’t typing CVE IDs by hand.
 
 - Finding list filters for `cve_id`, `cve_score_min`, and `cve_score_max`, mirroring what already exists on the Issue side.
 - A "Related CVEs" side panel rendered server-side from the existing CVE index, no new infrastructure.
@@ -258,7 +287,7 @@ Claude Sonnet 4.5 is useful here for UX copy (filter labels, placeholders, panel
 
 **Weekly deliverables**
 
-Task:- polish the evidence viewer, add RFI templates for detail view, and hit the midterm checkpoint with a full E2E demo.
+We polish the evidence viewer, add RFI templates for detail view, and hit the midterm checkpoint with a full E2E demo.
 
 - A noticeably better evidence viewer, with improved layout, syntax highlighting or snippet context, something that makes reviewing findings less of a slog.
 - Canned RFI templates as markdown/callout partials, ready to drop into the detail view without touching email plumbing.
@@ -275,7 +304,7 @@ RFI template text is a good fit for Claude Sonnet 4.5 since the output is markdo
 
 **Weekly deliverables**
 
-Task:- define ground truth (curated fixtures with known outcomes) and a management command that measures the pipeline against it, with clear acceptance gates.
+We define ground truth (curated fixtures with known outcomes) and a management command that measures the pipeline against it, with clear acceptance gates.
 
 - Five to eight curated fixtures with known expected outcomes (for example specific CVE IDs with known severities), the ground truth used to measure the Worker to BLT pipeline.
 - A management command in BLT that queries the Worker `/api/vulnerabilities` endpoint and compares results against expected fixtures, persisting per-fixture metrics (ingestion success, CVE enrichment match).
@@ -292,7 +321,7 @@ Fixture generation is tedious, and Claude Sonnet 4.5 speeds it up. The threshold
 
 **Weekly deliverables**
 
-Task:- Critical findings get a reconfirmation gate (a second signal must agree); we add per-org quotas and hook them into existing throttling.
+Critical findings get a reconfirmation gate (a second signal must agree); we add per-org quotas and hook them into existing throttling.
 
 - A reconfirmation gate for critical-severity findings, a second heuristic or rule has to agree before "Convert to Issue" goes through.
 - Confidence scoring updated to factor in whether reconfirmation happened.
@@ -309,7 +338,7 @@ The reconfirmation gate design is something I want to think through with Claude 
 
 **Weekly deliverables**
 
-Task:- Reviewers get “why this matters” and remediation hints in the UI: static markdown per rule type, OWASP links, and CVE-based enrichment where we have a CVE.
+Reviewers get “why this matters” and remediation hints in the UI: static markdown per rule type, OWASP links, and CVE-based enrichment where we have a CVE.
 
 - Markdown remediation fragments for each rule type, with OWASP links, static content, nothing dynamic.
 - CVE-based enrichment when `cve_id` is present: advisory links and OWASP context so reviewers don't have to leave the page.
@@ -326,7 +355,7 @@ This is one of the phases where AI earns its keep most clearly. Drafting remedia
 
 **Weekly deliverables**
 
-Task:- surface disclosure contacts via `security.txt` where possible, and add CSV (required) and PDF (optional) exports with strict redaction so evidence doesn’t leak.
+We surface disclosure contacts via `security.txt` where possible, and add CSV (required) and PDF (optional) exports with strict redaction so evidence doesn’t leak.
 
 - `security.txt` detection (fetch/parse or a stub) integrated into "Convert to Issue" and the report flow, so disclosure contacts surface automatically.
 - CSV export for findings with CVE metadata included; snapshot tests confirming sensitive evidence does not leak in plain text.
@@ -342,7 +371,7 @@ Export templates and snapshot-test harnesses are mechanical work that Claude Son
 
 **Weekly deliverables**
 
-Task:- Downstream systems (Rewards, RepoTrust) get versioned, HMAC-signed events on Convert to Issue and resolution, plus a read-only API and consumption docs.
+Downstream systems (Rewards, RepoTrust) get versioned, HMAC-signed events on Convert to Issue and resolution, plus a read-only API and consumption docs.
 
 - An `EventOutbox` table with a versioned payload schema: `cve_id`, `cve_score`, `rule_id`, `severity`, `org_id`/`repo`, `finding_id`/`issue_id`, `created_at`, `dedupe_key`, `version`.
 - Webhook delivery signed with HMAC-SHA256 (reusing BLT's existing GitHub/Slack HMAC patterns from `website/views/user.py`), emitted on "Convert to Issue" and on resolution, with an idempotency key and exponential backoff.
@@ -359,7 +388,7 @@ I'll use Claude Opus 4.5 to explore payload shape options before locking the sch
 
 **Weekly deliverables**
 
-Task:- A full pass on key handling, nonce uniqueness, redaction, and permissions; dead code and docs get cleaned up, and we document what was reviewed and fixed.
+A full pass on key handling, nonce uniqueness, redaction, and permissions; dead code and docs get cleaned up, and we document what was reviewed and fixed.
 
 - A proper security review pass: key handling, nonce uniqueness, evidence redaction in logs and templates, permission checks everywhere, and cache-poisoning resistance.
 - Dead code and over-generalized code cleaned out; docs updated to reflect what is actually implemented.
@@ -375,7 +404,7 @@ Claude Sonnet 4.5 is useful for generating a structured review checklist so noth
 
 **Weekly deliverables**
 
-Task:- get ready for the first real run: checklist, runbooks, rollback plan, and migration/data-deletion playbook, plus polished user and admin docs.
+We get ready for the first real run: checklist, runbooks, rollback plan, and migration/data-deletion playbook, plus polished user and admin docs.
 
 - A pilot checklist covering configuration steps, runbooks, and a rollback plan, so the first run is not improvised.
 - A migration rollback note and data deletion playbook for evidence blobs.
@@ -391,7 +420,7 @@ Runbook and checklist drafting is where Claude Sonnet 4.5 saves real time; getti
 
 **Weekly deliverables**
 
-Task:- One or two orgs run a live pilot; we collect feedback and metrics, apply high-priority fixes, tag v1.0, and wrap with a short delivery summary for the GSoC report.
+One or two orgs run a live pilot; we collect feedback and metrics, apply high-priority fixes, tag v1.0, and wrap with a short delivery summary for the GSoC report.
 
 - A live pilot with one to two orgs, with real metrics collected: time-to-triage, FP/FN feedback, and how useful the CVE filters and reports actually are in practice.
 - High-priority fixes applied based on feedback, v1.0 tagged, and a short "what was delivered" summary ready for the GSoC final report.
