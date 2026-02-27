@@ -20,6 +20,8 @@ The Worker discovers targets (CT logs, GitHub API, blockchain) and runs security
 
 The split is clean: the Worker handles discovery, scanning, and KV; BLT handles ingestion, triage, CVE enrichment, Issue creation, and events.
 
+NetGuardian as a whole also includes a Flutter desktop client that lets users run the Worker locally on their own machines and send findings into BLT through the same signed ingestion API. In this proposal I focus on the server/Worker pipeline, but I’ll keep the Flutter client as a first-class entry point when designing APIs, auth, and UX.
+
 **Prerequisites verified**
 
 - Python 3.11+, Django 5.x dev environment.
@@ -78,12 +80,14 @@ Worker already exists; GSoC adds the Exporter and all BLT-side pieces. Flow: Wor
 
 - BLT server: Django 5.x, Django REST Framework, PostgreSQL.
 - Worker: Cloudflare Python Worker (existing, for autonomous scanning and KV storage).
+- Client: Flutter desktop app that runs NetGuardian locally and talks to the BLT ingestion API.
 
 **Architecture split**
 
 - Detection and scanning: already implemented in BLT-NetGuardian Worker, no new detector code in GSoC scope.
 - Ingestion API: new DRF endpoints in BLT (`/api/ng/ingest`, `/api/ng/ingest/batch`) reusing existing auth patterns (TokenAuthentication, org-scoped permissions, throttling middleware).
 - Triage UI: server-rendered templates with HTMX, reusing existing BLT frontend patterns.
+- Flutter client: runs NetGuardian locally and submits findings via the same ztr-finding-1 envelopes; main client implementation can evolve in parallel, but APIs/auth/flows are designed here so it’s a first-class entry point.
 - No new infrastructure: no Celery, no separate worker daemons, no new queue systems. Periodic management commands (cron/Kubernetes CronJob) where needed; existing throttling middleware for rate limits.
 
 **Key files**
@@ -108,24 +112,24 @@ These invariants are treated as contracts: tests are written against them, and a
 
 ## 4. 12-week implementation plan (phases 1-16)
 
-**GSoC 12-week calendar and AI usage**
+**GSoC 12-week calendar**
 
-Models (see section 9): Cursor (IDE); Claude Opus 4.5 (reasoning/design); Claude Sonnet 4.5 (fast edits/boilerplate); GPT-5.2 (second opinion on security).
+See section 9 for how I plan to use AI across these phases; I keep this table focused on schedule and scope so it’s easier to scan.
 
-| GSoC Week | Focus (phases) | Models most likely to be used | How AI helps |
-|-----------|---------------|-------------------------------|--------------|
-| 1 | Phases 1-2: envelope/schema + ingestion and zero-trust | Claude Opus 4.5, Claude Sonnet 4.5 | Spec draft and field names (Claude Opus 4.5); serializer/test scaffolds (Claude Sonnet 4.5). I refine and harden; GPT-5.2 for second pass on crypto/schema. |
-| 2 | Phase 3: BLT Exporter integration | Claude Sonnet 4.5, GPT-5.2 | Mapping ScanResult to envelope and retry/backoff (Claude Sonnet 4.5); I hand-check signing/headers/errors; GPT-5.2 to double-check signing and error paths. |
-| 3 | Phase 4: Triage-lite UI | Claude Sonnet 4.5 | Template markup, filter forms, HTMX snippets (Claude Sonnet 4.5); I keep permission/decrypt/queryset logic explicit and reviewed. |
-| 4 | Phases 5-6: CVE plumbing + validation/dedup | Claude Sonnet 4.5 | Repetitive CVE/fingerprint tests and migration boilerplate (Claude Sonnet 4.5); I design fingerprint and validation rules. |
-| 5 | Phase 7 + Phase 8 start: CVE-aware UX + polish | Claude Sonnet 4.5 | UX copy for filters and "Related CVEs", evidence viewer layout (Claude Sonnet 4.5); I enforce accessibility and security. |
-| 6 | Phase 8: triage polish, RFIs, midterm E2E | Claude Sonnet 4.5, Claude Opus 4.5 | RFI template text and demo script (Claude Sonnet 4.5); edge-case enumeration for E2E plan (Claude Opus 4.5). Checkpoint week. |
-| 7 | Phase 9: Fidelity and acceptance gates | Claude Sonnet 4.5 | Fixture generation and query/report boilerplate (Claude Sonnet 4.5); I define thresholds and metrics. |
-| 8 | Phase 10: consensus and resilience | Claude Sonnet 4.5, Claude Opus 4.5 | Quota/rate-limit patterns (Claude Sonnet 4.5); schema and middleware integration choices (Claude Opus 4.5). |
-| 9 | Phase 11: remediation and insights | Claude Sonnet 4.5 | Remediation fragments and "why this matters" copy (Claude Sonnet 4.5); I tune with mentors for OWASP alignment. |
-| 10 | Phase 12: disclosure and reports | Claude Sonnet 4.5 | CSV/PDF templates and snapshot-test harnesses (Claude Sonnet 4.5); I own redaction and verify no leaks. CSV required; PDF optional. |
-| 11 | Phase 13: verified events for downstream | Claude Opus 4.5, Claude Sonnet 4.5 | Event schema variants and pagination patterns (Claude Opus 4.5); API/docs boilerplate (Claude Sonnet 4.5); I lock schema and HMAC/idempotency. |
-| 12 | Phases 14-16: hardening, pilot, v1.0 | Claude Sonnet 4.5, GPT-5.2 | Checklists and runbooks (Claude Sonnet 4.5); final summary draft (Claude Sonnet 4.5); GPT-5.2 second opinion on security-critical diffs; I do final review. |
+| GSoC Week | Focus (phases) |
+|-----------|----------------|
+| 1 | Phases 1-2: envelope/schema + ingestion and zero-trust |
+| 2 | Phase 3: BLT Exporter integration |
+| 3 | Phase 4: Triage-lite UI |
+| 4 | Phases 5-6: CVE plumbing + validation/dedup |
+| 5 | Phase 7 + Phase 8 start: CVE-aware UX + polish |
+| 6 | Phase 8: triage polish, RFIs, midterm E2E |
+| 7 | Phase 9: Fidelity and acceptance gates |
+| 8 | Phase 10: consensus and resilience |
+| 9 | Phase 11: remediation and insights |
+| 10 | Phase 12: disclosure and reports |
+| 11 | Phase 13: verified events for downstream |
+| 12 | Phases 14-16: hardening, pilot, v1.0 |
 
 *Phase 5 is fast (~2 days) because it reuses the existing CVE cache utilities from PR #5057. It is paired with Phase 6 in Week 4 to keep the 12-week timeline realistic. Phase numbers are implementation milestones, not weeks; the table above shows how 16 named phases map onto 12 GSoC weeks.*
 
