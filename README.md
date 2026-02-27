@@ -115,9 +115,11 @@ alg MUST be "hmac-sha256" for v1; "ed25519" may be added post-v1.
 
 If plaintext_mode is true, the envelope MUST include payload_plaintext (JSON object). If plaintext_mode is false or absent, the envelope MUST include payload_ciphertext (base64). In both cases, payload_digest = sha256(payload_bytes) over the exact bytes sent — ciphertext bytes or the UTF-8 canonical JSON of payload_plaintext.
 
-Signatures are HMAC-SHA256 over canonical JSON, chosen because it works natively in Cloudflare Workers without heavy crypto dependencies. Nonces MUST be unique per sender_id. The server enforces unique(sender_id, nonce) in the database and rejects replays within a ±5-minute issued_at window. Recommended nonce format: <unix_ts>-<random> (ordering is not required; uniqueness is). Ed25519 is on the table for future BLT-side verification but isn't needed for the Worker in this project.
+Signatures are HMAC-SHA256 over canonical JSON, chosen because it works natively in Cloudflare Workers without heavy crypto dependencies. On the BLT server side, canonical JSON is produced with Python's `json.dumps(obj, sort_keys=True, separators=(',', ':'), ensure_ascii=False)`; a property test verifies that the same dict with randomized key insertion order serializes identically 1,000× and the resulting signature is stable. Nonces MUST be unique per sender_id. The server enforces unique(sender_id, nonce) in the database and rejects replays within a ±5-minute issued_at window. Recommended nonce format: <unix_ts>-<random> (ordering not required; uniqueness is). Ed25519 is on the table for future BLT-side verification but isn't needed for the Worker in this project.
 
-For evidence, NetGuardian stores the encrypted bytes at rest (server-side keys), plus the SHA-256 digest and size. Neither ciphertext nor plaintext is ever logged, and templates/logs redact long or sensitive fields. Inbound inputs are normalized and length-capped before they touch anything. Max envelope body size: 1 MiB (1,048,576 bytes) by default (org-configurable); requests exceeding the cap are rejected with 413 Payload Too Large. All Finding reads are org-scoped at the query level, evidence access requires an explicit permission check and gets logged every time, and "Convert to Issue" enforces both org ownership and rate limits before it goes through.
+For evidence, NetGuardian stores the encrypted bytes at rest using the `cryptography` library (Fernet/AES-GCM) with an app-level key held in settings/secret store; EvidenceBlob.bytes is wrapped in encrypt/decrypt helpers and every decrypt is logged. Neither ciphertext nor plaintext is ever logged at the field level, and templates/logs redact long or sensitive fields. Evidence encryption has its own app-key kid for future rotation (separate from the SenderKey kid used for envelope signing). Inbound inputs are normalized and length-capped before they touch anything. Max envelope body size: 1 MiB (1,048,576 bytes) by default (org-configurable); requests exceeding the cap are rejected with 413 Payload Too Large. All Finding reads are org-scoped at the query level, evidence access requires an explicit permission check and gets logged every time, and "Convert to Issue" enforces both org ownership and rate limits before it goes through.
+
+X-BLT-Timestamp is treated as advisory only (used for logs and rate-limit heuristics); expiry decisions are made exclusively against the signed issued_at inside the envelope and never against the header.
 
 These invariants are treated as contracts: tests are written against them, and any refactor or library change has to preserve them.
 
@@ -158,7 +160,7 @@ Responses:
 - 400 Bad Request: `{ error: "clock_skew" | "digest_mismatch" | "bad_sig" | "invalid_envelope" }`
 - 401 Unauthorized, 413 Payload Too Large, 429 Too Many Requests (with Retry-After header).
 
-Batch endpoint: POST /api/ng/ingest/batch returns 207 Multi-Status with an array of per-item results `{ index, status: "created" | "merged" | "duplicate" | "error", finding_id?, evidence_id?, error_code? }`. Client retries only items with status="error".
+Batch endpoint: POST /api/ng/ingest/batch returns 200 OK with an array of per-item results `{ index, status: "created" | "merged" | "duplicate" | "error", finding_id?, evidence_id?, error_code? }`. Client retries only items with status="error".
 
 Property tests cover the signature window, log redaction, and idempotency, plus one E2E test proving a valid envelope actually ends up as a stored Finding.
 
@@ -188,7 +190,7 @@ A noticeably better evidence viewer with improved layout and syntax highlighting
 
 **Phase 9 — Fidelity and acceptance gates**
 
-Five to eight curated fixtures with known expected outcomes; a management command in BLT that queries the Worker /api/vulnerabilities endpoint and compares results against expected fixtures, persisting per-fixture metrics; documented acceptance gates: at least 95% ingestion success rate; at least 90% CVE match on known CVEs. Scope is pipeline integrity and CVE enrichment accuracy, not scanner rule tuning.
+Five to eight curated fixture envelopes with known expected outcomes (specific rule_ids, CVE IDs, severities); fidelity is measured from BLT's side only — fixture envelopes are submitted directly to the ingestion API and outcomes are compared against expected stored Finding fields, avoiding a tight dependency on any Worker-side endpoint. A management command persists per-fixture metrics; documented acceptance gates: at least 95% ingestion success rate; at least 90% CVE match on known CVEs. Scope is pipeline integrity and CVE enrichment accuracy, not scanner rule tuning.
 
 **Phase 10 — Consensus and resilience**
 
