@@ -37,43 +37,39 @@ Non-goals for the GSoC core scope include shipping the full Flutter desktop clie
 
 ```mermaid
 flowchart TB
-    subgraph Worker["BLT-NetGuardian Worker - Cloudflare"]
-        Discovery["Autonomous Discovery - CT logs, GitHub, blockchain"]
-        Scanners["Security Scanners - Web2, Web3, static, contract"]
-        KV["Cloudflare KV - temporary task/result storage"]
-        Exporter["BLT Exporter NEW - canonical JSON + HMAC sign + POST"]
-    end
+  subgraph Local["Local/Desktop (Flutter Client)"]
+    FC["Flutter UI<br/>- target selection<br/>- local detectors (e.g., Semgrep)<br/>- build & sign ztr-finding-1<br/>- offline queue & retry"]
+  end
 
-    subgraph BLT["BLT Server - Django + Postgres"]
-        Ingest["Ingestion API NEW - verify envelope, replay check, rate limit"]
-        DB["PostgreSQL - Finding, Envelope, EvidenceBlob, SenderKey, EventOutbox"]
-        CVE["CVE Cache EXISTS PR 5057 - normalize_cve_id, get_cached_cve_score"]
-        Triage["Triage UI NEW - list, filters, detail, server-side decrypt"]
-        Convert["Convert to Issue NEW - Finding to Issue with CVE"]
-        Reports["CSV / PDF Reports NEW - export findings with CVE metadata"]
-        Webhook["events_ng Outbox NEW - HMAC-signed webhook"]
-    end
+  subgraph Worker["Cloudflare Edge (BLT-NetGuardian Worker)"]
+    Disc["Autonomous discovery"]
+    Scan["Security scanners"]
+    KV["KV staging"]
+    Exp["BLT Exporter (sign & POST)"]
+  end
 
-    subgraph Downstream["Downstream - out of GSoC scope"]
-        Rewards["BLT-Rewards B"]
-        RepoTrust["RepoTrust X"]
-        University["BLT University C"]
-    end
+  subgraph BLT["BLT Server (Django + Postgres)"]
+    Ingest["/api/ng/ingest (+/batch)<br/>verify sig - replay check - caps"]
+    DB["Postgres: Finding - Envelope - EvidenceBlob - SenderKey - EventOutbox"]
+    CVE["CVE Cache (PR `#5057`)<br/>normalize_cve_id - get_cached_cve_score"]
+    Triage["Triage UI<br/>filters - detail - server-side decrypt"]
+    Issue["Convert to Issue<br/>CVE autopopulated"]
+    Events["Verified events webhook<br/>(HMAC signed)"]
+    Reports["CSV (req) - PDF (opt)"]
+  end
 
-    Discovery --> Scanners
-    Scanners --> KV
-    KV --> Exporter
-    Exporter -->|ztr-finding-1 envelope| Ingest
-    Ingest --> DB
-    DB --> CVE
-    CVE --> Triage
-    Triage --> Convert
-    Convert --> DB
-    DB --> Webhook
-    Triage --> Reports
-    Webhook --> Rewards
-    Webhook --> RepoTrust
-    Webhook -.->|future| University
+  subgraph Downstream["Downstream (examples)"]
+    Rewards["BLT-Rewards"]
+    RepoTrust["RepoTrust"]
+  end
+
+  FC -->|ztr-finding-1| Ingest
+  Disc --> Scan --> KV --> Exp -->|ztr-finding-1| Ingest
+  Ingest --> DB --> CVE --> Triage --> Issue --> DB --> Events
+  Triage --> Reports
+  Events --> Rewards
+  Events --> RepoTrust
+
 ```
 
 Worker already exists; GSoC adds the Exporter and all BLT-side pieces. Flow: Worker to KV to Exporter to signed envelopes to ingestion to CVE enrichment to triage UI to "Convert to Issue" to HMAC-signed webhook. No new queue; existing throttling only.
