@@ -22,7 +22,7 @@ The Worker already handles autonomous discovery (CT logs, GitHub, blockchain) an
 
 ## 2. Architecture & Stack
 
-The whole thing is serverless. The Worker (Python) handles all backend logic, D1 (SQLite) is the storage layer, and the triage UI is a static SPA on GitHub Pages. BLT-API takes care of CVE lookups and Issue creation. No Django, no PostgreSQL, no Celery anywhere in this stack.
+The whole thing is serverless. The Worker (Python) handles all backend logic, D1 (SQLite) is the storage layer, and the triage UI is a static SPA on GitHub Pages. BLT-API takes care of CVE lookups and Issue creation. No Django, no PostgreSQL, no Celery anywhere in this stack. CORS: GitHub Pages → Worker allowed origins only.
 
 ```mermaid
 flowchart TB
@@ -70,7 +70,19 @@ D1 tables: `sender_keys`, `envelopes`, `evidence_meta`, `findings`, `events_outb
 
 Endpoints: `/api/ng/ingest`, `/api/ng/ingest/batch`, `/api/ng/findings`, `/api/ng/findings/{id}`, `/api/ng/findings/{id}/convert`, `/api/ng/events`.
 
-Ingestion returns `201` for created/merged, `200` for duplicates, `400` for bad_sig/clock_skew/digest_mismatch/invalid_envelope, `413` for oversized payloads, and `429` with a Retry-After for rate limiting. Batch endpoint returns per-item `[{index, status, finding_id?, error_code?}]` and clients only retry `status="error"` items.
+**Headers (ingest requests)**
+
+- Content-Type: application/json
+- X-BLT-Signature: `sha256=<hex>`
+- X-BLT-Timestamp: `<unix_ts>` (advisory for logs/rate-limit; signed issued_at governs expiry)
+
+Ingestion returns `201` for created/merged (see response bodies), `200` for duplicates, `400` for bad_sig/clock_skew/digest_mismatch/invalid_envelope, `413` for oversized payloads, and `429` with a Retry-After for rate limiting. Batch endpoint returns per-item `[{index, status, finding_id?, error_code?}]` and clients only retry `status="error"` items.
+
+**Response bodies**
+
+- 201 Created: `{ finding_id, status: "created" | "merged", evidence_id, replay: false }`
+- 200 OK (duplicate): `{ status: "duplicate", replay: true }`
+- 400/401/413/429: `{ error: "clock_skew" | "digest_mismatch" | "bad_sig" | "invalid_envelope" }` (429 includes Retry-After)
 
 Webhook headers: `X-BLT-Webhook-Signature: sha256=<hex>` and `X-BLT-Webhook-Timestamp: <unix_ts>`.
 
@@ -90,7 +102,7 @@ On replay and freshness: the server enforces a ±5 min window on `issued_at` and
 
 Evidence is AES-GCM encrypted at rest with a rotatable Worker-managed key. The SPA only ever sees digests, sizes, or pointers, never the actual content. Every decrypt is written to `access_logs`. Nothing sensitive ever appears in logs. The 1 MiB envelope cap is enforced with a 413 and is configurable per org.
 
-All Finding queries are scoped to the org. Convert-to-Issue checks org ownership before doing anything. Rate limits are per org. The nonce just needs to be unique per `sender_id`; the recommended format is `"<unix_ts>-"` (ordering not required; uniqueness is).
+All Finding queries are scoped to the org. Convert-to-Issue checks org ownership before doing anything. Rate limits are per org. The nonce just needs to be unique per `sender_id`. Recommended format: `"<unix_ts>-"` (ordering not required; uniqueness is).
 
 ---
 
