@@ -1,6 +1,6 @@
 # NetGuardian — Technical approach & weekly deliverables (GSoC 2026)
 
-> **Note for maintainers:** This is the technical part only. I'll add the SAT/personal sections (bio, coding skills, time commitment, etc.) once you're happy with this approach.
+> **Note for maintainers:** This is the technical part only. I'll add the SAT/personal sections (bio, time commitment, availability, etc.) after you're happy with the approach.
 
 > **Scope note:** This GSoC scope does not add new Django endpoints, templates, or PostgreSQL models to the BLT main repo. All NetGuardian backend logic runs in Cloudflare Workers with D1, and the triage UI is a static app on GitHub Pages consuming Worker JSON APIs. CVE data and Issue creation are delegated to BLT-API.
 
@@ -8,23 +8,27 @@
 
 ## 1. Introduction
 
-This project extends work I've already contributed to OWASP BLT and builds on the existing BLT-NetGuardian Worker (a Cloudflare Python Worker for autonomous discovery and scanning) to deliver a zero-trust ingestion path for security findings, CVE-aware triage, and verified events for downstream systems (Rewards, RepoTrust, University). The implementation runs on **Cloudflare Workers + D1 + GitHub Pages**, with CVE normalization and Issue creation delegated to **BLT-API**; no new Django endpoints or PostgreSQL models are in scope.
+This proposal connects the existing BLT-NetGuardian autonomous Worker to BLT's triage and issue-tracking via a zero-trust ingestion path, CVE-aware triage, and verified downstream events. It builds on my recent BLT contribution (PR #5057: CVE search, filtering, caching, autocomplete, and Issue model CVE columns) by enriching new security Findings with CVE metadata for faster triage.
+
+**Important pivot (per maintainer guidance)**
+
+- Serverless-first stack: Cloudflare Worker (Python) + Cloudflare D1 (SQLite) + GitHub Pages (static triage SPA).
+- No new Django/DRF endpoints or PostgreSQL models in BLT.
+- BLT-API provides CVE normalization/score and Issue creation on Convert-to-Issue.
 
 **Relationship to the existing BLT-NetGuardian Worker**
 
-The Worker discovers targets (CT logs, GitHub API, blockchain) and runs security scanners (Web2, Web3, static, contract). Results stage in Cloudflare KV. This GSoC project connects that pipeline to a dedicated **ingestion and triage backend** (also on Cloudflare) by:
-
-- Adding a BLT exporter in the Worker that converts scan results to signed ztr-finding-1 envelopes and POSTs to the NetGuardian ingestion Worker.
-- Implementing ingestion and triage in **Cloudflare Workers + D1**: verify envelope, replay protection, dedupe by fingerprint, CVE enrichment via BLT-API, and HMAC-signed verified events.
-- Delivering a **triage UI as a static SPA on GitHub Pages** that calls Worker JSON APIs (no secrets on the client).
-
-NetGuardian may also be used by a Flutter desktop client or other agents that send signed ztr-finding-1 envelopes to the same ingestion endpoint; the contract is designed so those can integrate in parallel.
+- **Worker (already exists):** autonomous discovery (CT logs, GitHub, blockchain) and scanners (Web2, Web3, static, contract) staging intermediate results in KV.
+- This GSoC project does not rewrite scanners. It:
+  - Adds a BLT exporter (in Worker) that builds/sends signed ztr-finding-1 envelopes to a dedicated ingestion route.
+  - Implements ingestion, triage APIs, CVE enrichment, dedup/idempotency, and verified events in Worker with D1 storage.
+  - Serves a static triage SPA on GitHub Pages that calls Worker JSON APIs (no secrets on the client).
 
 **Prerequisites verified**
 
-- Cloudflare Workers CLI (wrangler), D1 bindings, and Python Worker dev environment.
-- Access to the BLT-NetGuardian Worker repo and BLT-API (for CVE and Issue creation).
-- Static site hosting (e.g. GitHub Pages) for the triage SPA.
+- Cloudflare Workers + D1 (SQLite-based).
+- GitHub Pages for static SPA hosting.
+- BLT-API endpoints for CVE normalization/score and Issue creation.
 
 ---
 
@@ -70,8 +74,8 @@ flowchart TB
 
 **2.1 Stack overview**
 
-- **Backend:** Cloudflare Worker (Python) + Cloudflare D1 (SQLite-based) for storage.
-- **Frontend:** GitHub Pages (static SPA) that calls Worker JSON APIs (no secrets on the client).
+- **Backend:** Cloudflare Worker (Python) + Cloudflare D1 (SQLite-based) for storage (no VPS; Cloudflare Cron Triggers for housekeeping).
+- **Frontend:** GitHub Pages (static SPA) that calls Worker JSON APIs over CORS-controlled HTTPS (no secrets on the client).
 - **External services:** BLT-API for CVE normalization/score and Issue creation.
 - No new Django endpoints, no PostgreSQL models, no Celery/queue infra.
 
@@ -152,6 +156,10 @@ flowchart TB
 - CSV export: required; snapshot tests ensure no plaintext secrets leak.
 - PDF export: optional/timeboxed (0.5–1 week). If included, render in Worker and preserve the same redaction guarantees as CSV.
 
+**2.9 Companion (optional; not core to GSoC): Flutter Desktop Client**
+
+- Focused local runner (Windows/macOS/Linux) that builds/signs ztr-finding-1 envelopes and POSTs to Worker ingest; offline queue + retry; small local history; integrates via the same contract. Not required for v1 GSoC milestones.
+
 ---
 
 ## 3. Security invariants (ztr-finding-1)
@@ -169,6 +177,7 @@ flowchart TB
 - Exactly one payload:
   - payload_ciphertext: base64, OR
   - payload_plaintext: JSON object with plaintext_mode=true
+- payload_digest must be computed over the exact bytes sent (ciphertext bytes, or the UTF-8 canonical JSON of payload_plaintext).
 
 **3.2 Canonicalization and signing**
 
@@ -193,61 +202,144 @@ flowchart TB
 
 - MUST be unique per sender_id. Recommended format: "<unix_ts>-<random>" (ordering not required; uniqueness is).
 
+**3.6 Permissions and scoping**
+
+- All Finding queries are org-scoped; SPA calls must include an authenticated session; Convert-to-Issue checks org ownership; rate limits/quotas enforced per org.
+
 ---
 
 ## 4. 12-week implementation plan (Worker + D1 + GH Pages + BLT-API)
 
-| Week | Focus (phases) |
-|------|----------------|
-| 1 | Phases 1–2: ztr-finding-1 spec; D1 schema + unique indexes; ingest skeleton |
-| 2 | Phase 2: ingest verification (sig/skew/size), replay/idempotency, property tests |
-| 3 | Phase 4: Triage SPA (GH Pages) + Worker read APIs; server-side decrypt; audit logs; Convert to Issue |
-| 4 | Phases 5–6: CVE via BLT-API (normalize/score) + dedup/fingerprint; filters in SPA |
-| 5 | Phase 7 + Phase 8 start: CVE-aware triage UX + polish; CSV export scaffold |
-| 6 | Phase 8: triage polish, RFIs, midterm E2E (Worker ingest → D1 → SPA → BLT-API Issue → verified event) |
-| 7 | Phase 9: Worker→BLT fidelity fixtures & acceptance gates (≥95% ingest success; ≥90% CVE match) |
-| 8 | Phase 10: consensus for criticals; quotas/back-pressure (429 + Retry-After) |
-| 9 | Phase 11: remediation fragments (static + OWASP links) in SPA |
-| 10 | Phase 12: CSV export (required); PDF optional/timeboxed (if added, via Worker) |
-| 11 | Phase 13: verified events/webhooks + minimal read-only events API (Worker) |
-| 12 | Phases 14–16: hardening, docs, pilot, v1.0 tag |
+| Week | Focus |
+|------|--------|
+| 1 | Spec + D1 schema + scaffolding |
+| 2 | Ingestion verification, replay, caps |
+| 3 | Auth + triage SPA + server-side decrypt + audit |
+| 4 | CVE plumbing (BLT-API) + CVE filters |
+| 5 | Dedup/idempotency + CSV export (baseline) |
+| 6 | Triage polish + RFIs + midterm E2E |
+| 7 | Fidelity fixtures & acceptance gates |
+| 8 | Consensus for criticals + quotas/back-pressure |
+| 9 | Remediation & insights (static) |
+| 10 | Disclosure helpers & reports |
+| 11 | Verified events & minimal events API |
+| 12 | Hardening, docs, pilot, v1.0 |
+
+**Week 1 — Spec + D1 schema + scaffolding**
+
+- ztr-finding-1 spec finalized (fields, canonicalization, caps, errors); D1 schema (sender_keys, envelopes, evidence_meta, findings, events_outbox, access_logs) with unique indexes; Worker project + CI skeleton; canonicalization/digest utilities and tests.
+
+**Week 2 — Ingestion verification, replay, caps**
+
+- Implement POST /api/ng/ingest (+/batch): signature verify, ±5 min skew, 1 MiB cap, DB uniqueness on (sender_id, nonce) with idempotent duplicate path; consistent error codes and JSON responses; property tests.
+
+**Week 3 — Auth + triage SPA + server-side decrypt + audit**
+
+- GitHub OAuth (Auth Code + PKCE) in Worker; SPA login; /api/ng/findings (list with filters/paging) and /api/ng/findings/{id} (redacted detail + server-side decrypted snippet); access_logs on evidence view; org-scoped permission checks.
+
+**Week 4 — CVE plumbing (BLT-API) + CVE filters**
+
+- Integrate BLT-API normalize_cve_id/get_cve_score; store cve_id/cve_score on Finding; extend filters (cve_id, cve_score_min/max); SPA CVE filters, Related CVEs panel; mapping tests.
+
+**Week 5 — Dedup/idempotency + CSV export (baseline)**
+
+- Enforce fingerprint uniqueness (rule_id, target_url, selector?, evidence_digest) and upsert semantics; concurrency/race tests; Worker CSV export endpoint with redaction; SPA "Export CSV" button; snapshot tests.
+
+**Week 6 — Triage polish + RFIs + midterm E2E**
+
+- Evidence viewer improvements; canned RFI markdown fragments safely rendered; midterm end-to-end demo: login → signed ingestion → Finding in D1 → triage list/detail → server-side decrypt → Convert-to-Issue (via BLT-API) → verified event queued → CSV export.
+
+**Week 7 — Fidelity fixtures & acceptance gates**
+
+- 5–8 curated fixtures; ingestion and CVE enrichment metrics persisted; acceptance thresholds enforced in CI (≥95% ingestion success; ≥90% CVE match on curated set); docs on fixtures and regression.
+
+**Week 8 — Consensus for criticals + quotas/back-pressure**
+
+- Consensus gate for criticals (2+ corroborating signals) before auto-convert; confidence scoring updated; per-org/hour quotas; 429 with Retry-After; SPA handles back-pressure gracefully; tests.
+
+**Week 9 — Remediation & insights (static)**
+
+- Rule-mapped remediation fragments with OWASP links; "why this matters" callouts; SPA renders safe static content; mapping and XSS-safety tests.
+
+**Week 10 — Disclosure helpers & reports**
+
+- security.txt detection integrated into Convert-to-Issue and reports; finalize CSV; PDF optional/timeboxed (0.5–1 week) with same redaction rules—defer if unstable.
+
+**Week 11 — Verified events & minimal events API**
+
+- events_outbox insert on convert/resolution; webhook delivery (HMAC headers, retries, dedupe_key idempotency); read-only /api/ng/events for consumers; signature/retry/idempotency tests; example consumers/docs.
+
+**Week 12 — Hardening, docs, pilot, v1.0**
+
+- Security review: key handling, AES-GCM usage, nonce uniqueness, cache-poisoning resistance, permission paths, log redaction; Cron Triggers for retries/cleanup; WAF/Rate-Limit tuning; pilot with 1–2 orgs; fix high-priority feedback; runbook + rollback/data deletion docs; tag v1.0.
 
 ---
 
 ## 5. Flexibility and change management
 
-NetGuardian is designed to stay flexible for maintainers and the community. If we collectively decide mid-project that a different library or pattern makes more sense, I'll isolate third-party dependencies behind small wrappers so swapping them doesn't ripple through callers. Any non-trivial change gets a short Markdown note first (what, why, alternatives, schedule impact) before I touch anything. The acceptance criteria in this proposal (ingestion invariants, fidelity gates, verified-event schema) act as contracts; if we refactor, the tests stay the same and still have to pass.
+- Serverless-first isolation: Worker modules (ingestion, triage, CVE, events) are thin and test-covered; swapping implementations (e.g. batch code paths or events retry backoff) does not ripple across SPA or schema.
+- All externally visible contracts (envelope ztr-finding-1, ingest/webhook headers, events payload) are versioned; tests enforce invariants.
+- Any non-trivial change ships with a short ADR-style note (what, why, alternatives, impact).
 
 ---
 
 ## 6. Testing strategy
 
-The ingestion tests cover the full envelope lifecycle: valid submission, expired timestamp, future-issued, and replay, with the replay case exercised via D1 uniqueness so it holds under concurrent load. Signature mismatch and canonicalization drift are tested separately. Size and MIME cap enforcement, filename sanitization, and access logging on evidence reads each get their own cases.
+**Envelope/ingestion**
 
-For the exporter (in the BLT-NetGuardian Worker), the main test is the full scan → KV → exporter → NetGuardian ingest Worker → D1 path. Beyond that: retry behavior when the ingest Worker is down, idempotency via nonce reuse, and malformed scan result handling.
+- Valid/expired/future/replayed; duplicate idempotency; signature mismatch; canonicalization stability; 1 MiB cap; consistent error codes; no plaintext in logs (redaction).
 
-Dedup tests focus on the fingerprint: the same fingerprint should collapse into one Finding, and concurrent submissions of the same fingerprint should collapse cleanly rather than racing to create duplicates.
+**Dedup/idempotency**
 
-On the triage side: pagination boundaries, org permission leakage (Org A user cannot see Org B findings), CVE filter correctness via BLT-API responses, and basic cache-poisoning resistance. For consensus and resilience: the critical reconfirmation gate and 429/Retry-After behavior under load. For reports: CSV (and PDF if implemented) snapshot tests that confirm sensitive evidence does not appear in plain text output.
+- Same fingerprint collapses; variant evidence_digest creates new attachment; concurrent races collapse correctly.
+
+**Triage and permissions**
+
+- Org scoping and leakage negatives; pagination/sort; evidence access always audited; CVE filter correctness; cache-poisoning resistance.
+
+**Consensus and resilience**
+
+- Critical reconfirmation gate; quotas; 429 Retry-After honored end-to-end.
+
+**Reports**
+
+- CSV snapshot tests: no plaintext secrets; (optional) PDF snapshot tests with same redaction guarantees.
+
+**Metrics/fidelity**
+
+- Worker→BLT ingestion success and CVE match thresholds enforced in CI.
 
 ---
 
 ## 7. Milestone checkpoints
 
-- **Midterm (after Week 6):** E2E demo — Worker ingest → D1 → SPA triage → server-side decrypt → "Convert to Issue" via BLT-API → verified event.
-- **Final (after Week 12):** Full Worker + D1 + GH Pages pipeline live, verified-events webhook, fidelity metrics, and pilot feedback.
+**Midterm (end of Week 6)**
+
+- E2E demo: signed ingestion → D1 Finding → CVE-aware triage list/detail → server-side decrypt (audited) → Convert-to-Issue (BLT-API) → verified event queued → CSV export.
+
+**Final (end of Week 12)**
+
+- Productionized Worker + D1 + SPA; verified events/webhooks; curated metrics; pilot feedback applied; v1.0 tagged; docs/runbooks shipped.
 
 ---
 
 ## 8. Cross-project integration
 
-NetGuardian emits a signed webhook for Verified Events with a stable, versioned schema. I'll write concrete consumption examples specifically for BLT-Rewards and RepoTrust, not just the schema, but working examples so they're not guessing at edge cases. NetGuardian stops at emitting clean events; downstream scoring, gamification, and education logic are out of scope and should not live here.
+**BLT-API**
 
-Both the envelope and event payloads carry a version field and a dedupe_key for idempotent consumption. Webhook HMAC header: X-BLT-Webhook-Signature: sha256=\<hex\>; X-BLT-Webhook-Timestamp: \<unix_ts\>.
+- normalize_cve_id/get_cve_score and Issue creation; optional org/user membership check.
+
+**Downstream consumers**
+
+- HMAC-signed verified events (versioned, with dedupe_key) + minimal read-only events API for polling; example consumers for BLT-Rewards/RepoTrust included in docs; do not embed downstream logic in NetGuardian.
+
+**Webhook contract**
+
+- Both the envelope and event payloads carry a version field and a dedupe_key for idempotent consumption. Webhook HMAC header: X-BLT-Webhook-Signature: sha256=\<hex\>; X-BLT-Webhook-Timestamp: \<unix_ts\>.
 
 ---
 
-## 9. AI tooling
+## 9. AI tooling and safety
 
 **9.1 IDE (fixed) and models (tentative)**
 
@@ -258,12 +350,12 @@ Both the envelope and event payloads carry a version field and a dedupe_key for 
 
 **9.2 How AI is used across phases**
 
-Claude Opus 4.5 is used for the design-heavy phases: locking the ztr-finding-1 spec (Phase 1), reconfirmation gate tradeoffs (Phase 10), payload shape for the downstream event schema (Phase 13), and failure modes in the midterm test plan (Phase 8).
+- Claude Opus 4.5: design-heavy phases (ztr-finding-1 spec, reconfirmation gate tradeoffs, payload shape for events, failure modes in midterm test plan).
+- Claude Sonnet 4.5: high-volume repetitive work (Worker request/response handling, ScanResult-to-envelope mapping, SPA UI and filter wiring, D1 queries and tests, UX copy, RFI prose, fixture generation, rate-limit tests, remediation fragments, export/snapshot tests, events schema and docs, security checklists, runbooks, final report summary).
+- GPT-5.2: security review of critical paths (exporter secrets and failure behavior, timestamp/nonce/signature and error paths in ingestion Worker, security-critical changes before merge, patches before v1.0).
 
-Claude Sonnet 4.5 handles high-volume repetitive work: Worker request/response handling (Phase 2), ScanResult-to-envelope mapping and retry utilities (Phase 3), SPA UI and filter wiring (Phase 4), D1 queries and tests (Phases 5–6), UX copy and filter labels (Phase 7), RFI template prose (Phase 8), fixture generation (Phase 9), rate-limit test structure (Phase 10), remediation fragments (Phase 11), export and snapshot tests (Phase 12), events schema and docs (Phase 13), security review checklists (Phase 14), runbook and pilot drafts (Phase 15), and the final GSoC report summary (Phase 16).
+**9.3 Guardrails (AI safety and usage policy)**
 
-GPT-5.2 is reserved for security review of critical paths: exporter secret handling and failure behavior (Phase 3), timestamp/nonce/signature and error paths in the ingestion Worker (Phase 2), security-critical changes before final merge (Phase 14), and patches with security implications before the v1.0 tag (Phase 16).
-
-**9.3 Guardrails**
-
-Every security-critical path (ingestion, signing, nonce handling, permissions, evidence redaction) gets hand-reviewed and test-covered before it merges. AI is useful for drafts and suggestions, but nothing ships that isn't fully understood. Canonical JSON and HMAC signing are implemented explicitly; verification logic, replay check, and size caps are written directly rather than generated. AI-assisted security-sensitive code gets a GPT-5.2 review before merge as a second set of eyes, not a substitute for the primary review.
+- Security-critical code (envelope verification, canonicalization, signing, nonce handling, server-side decrypt, permission checks) is hand-written from specs and covered by tests. No unreviewed generation in these paths.
+- AI assistance limited to boilerplate (serializers, minor scaffolds), documentation, and test fixture generation; all changes pass code review and test gates.
+- Invariants are codified in tests; refactors must preserve them.
