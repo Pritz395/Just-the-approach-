@@ -8,7 +8,7 @@
 
 ## 1. Introduction
 
-This proposal connects the existing BLT-NetGuardian autonomous Worker to BLT's triage and issue-tracking through a zero-trust ingestion path, CVE-aware triage, and verified downstream events. It builds directly on my recent BLT contribution (PR #5057: CVE search, filtering, caching, autocomplete, and Issue model CVE columns) by enriching new security Findings with CVE metadata so triaging is faster.
+This proposal connects the existing BLT-NetGuardian autonomous Worker to BLT's triage and issue-tracking through a zero-trust ingestion path, CVE-aware triage, and verified downstream events. The idea itself was part of my core GSoC ideas initiative plan. It builds directly on my recent BLT contribution (PR #5057: CVE search, filtering, caching, autocomplete, and Issue model CVE columns) by enriching new security Findings with CVE metadata so triaging is faster.
 
 The Worker already handles autonomous discovery (CT logs, GitHub, blockchain) and scanning (Web2, Web3, static, contract), staging results in KV. This project doesn't rewrite any of that. What it does:
 
