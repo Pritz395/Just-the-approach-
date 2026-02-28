@@ -200,7 +200,7 @@ flowchart TB
 
 **3.5 Nonce guidance**
 
-- MUST be unique per sender_id. Recommended format: "<unix_ts>-<random>" (ordering not required; uniqueness is).
+- MUST be unique per sender_id. Recommended format: "<unix_ts>-" (ordering not required; uniqueness is).
 
 **3.6 Permissions and scoping**
 
@@ -344,18 +344,18 @@ flowchart TB
 **9.1 IDE (fixed) and models (tentative)**
 
 - IDE: Cursor.
-- Strong reasoning (architecture, threat modeling, tricky refactors): Claude Opus 4.5, used when design choices and edge cases matter.
-- Fast edits and boilerplate: Claude Sonnet 4.5, used for inline edits, Worker handlers, serialization, docstrings, type hints, and repetitive scaffolding.
-- Second opinion on security-sensitive code and docs: GPT-5.2, used to double-check ingestion, signing, nonce handling, permissions, and evidence redaction.
+- Strong reasoning (architecture, threat modeling, tricky refactors): Claude Opus 4.5.
+- Fast edits and boilerplate: Claude Sonnet 4.5.
+- Second opinion on security-sensitive code and docs: GPT-5.2.
 
 **9.2 How AI is used across phases**
 
-- Claude Opus 4.5: design-heavy phases (ztr-finding-1 spec, reconfirmation gate tradeoffs, payload shape for events, failure modes in midterm test plan).
-- Claude Sonnet 4.5: high-volume repetitive work (Worker request/response handling, ScanResult-to-envelope mapping, SPA UI and filter wiring, D1 queries and tests, UX copy, RFI prose, fixture generation, rate-limit tests, remediation fragments, export/snapshot tests, events schema and docs, security checklists, runbooks, final report summary).
-- GPT-5.2: security review of critical paths (exporter secrets and failure behavior, timestamp/nonce/signature and error paths in ingestion Worker, security-critical changes before merge, patches before v1.0).
+- Claude Opus 4.5: design-heavy phases (ztr-finding-1 spec, reconfirmation gate tradeoffs, events payload shape, midterm failure modes).
+- Claude Sonnet 4.5: repetitive scaffolding (Worker handlers, SPA filters/UI, D1 queries, UX copy, RFI prose, fixtures, rate-limit tests, remediation fragments, CSV/PDF snapshot tests, events docs, checklists, runbooks, final summary).
+- GPT-5.2: security review of critical paths (secrets/failure behavior in exporter, timestamp/nonce/signature and error paths, security-impacting patches).
 
 **9.3 Guardrails (AI safety and usage policy)**
 
 - Security-critical code (envelope verification, canonicalization, signing, nonce handling, server-side decrypt, permission checks) is hand-written from specs and covered by tests. No unreviewed generation in these paths.
-- AI assistance limited to boilerplate (serializers, minor scaffolds), documentation, and test fixture generation; all changes pass code review and test gates.
+- AI assistance is limited to boilerplate, documentation, and fixtures; all changes pass code review and test gates.
 - Invariants are codified in tests; refactors must preserve them.
