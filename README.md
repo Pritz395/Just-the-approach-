@@ -82,7 +82,7 @@ flowchart TB
   - Triage APIs: list/detail finders; server-side decrypt; evidence access audit log; "Convert to Issue" → BLT-API.
   - CVE plumbing: call BLT-API normalize_cve_id/get_cve_score; store cve_id/cve_score on Finding.
   - Outbox/webhooks: HMAC-signed verified events with retries and dedupe_key idempotency.
-  - Auth: GitHub OAuth + PKCE (or Cloudflare Access) → session cookie; org-scoped authorization.
+  - Auth: GitHub OAuth + PKCE (or Cloudflare Access) → session cookie; org-scoped authorization. X-BLT-Timestamp is advisory for logs/rate-limit; issued_at in the signed envelope governs expiry.
 - **GitHub Pages SPA**
   - Triage UI: list/filter/detail, CSV export, "Convert to Issue" button; all calls go to Worker APIs.
   - No local secrets, no direct DB/BLT-API calls, no decryption on client.
@@ -117,7 +117,7 @@ flowchart TB
   - 413 Payload Too Large
   - 429 Too Many Requests (includes Retry-After)
 - **POST /api/ng/ingest/batch**
-  - 207 Multi-Status (or 200 with per-item array) with:
+  - 200 OK with per-item array:
   - `[{ index, status: "created"|"merged"|"duplicate"|"error", finding_id?, evidence_id?, error_code? }, …]`
   - Clients retry only items with status="error".
 
@@ -185,12 +185,13 @@ flowchart TB
 
 - Max envelope body size: 1 MiB (1,048,576 bytes) by default (org-configurable); 413 on overflow.
 - Store encrypted evidence bytes at rest (or pointer), plus digest and size.
+- Evidence encryption: AES-GCM with a Worker-managed app key (rotatable); only digests/sizes or pointers are exposed to the SPA; every decrypt is audited.
 - Never log ciphertext or plaintext; redact long/sensitive fields in logs/templates.
 - Evidence access is server-side and always audited (access_logs).
 
 **3.5 Nonce guidance**
 
-- MUST be unique per sender_id. Recommended format: "<unix_ts>-<uuid4>" (ordering not required; uniqueness is).
+- MUST be unique per sender_id. Recommended format: "<unix_ts>-<random>" (ordering not required; uniqueness is).
 
 ---
 
