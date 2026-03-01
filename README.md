@@ -397,7 +397,8 @@ I haven't contributed outside OWASP as my primary goal is delivering and working
 **Name:** Preetham Poojari  
 **University:** GITAM University, Hyderabad, Telangana  
 **Degree:** B.Tech in Computer Science and Engineering, 3rd year  
-**OWASP Slack:** preetham
+**OWASP Slack:** preetham  
+**Project coordination:** We use Slack (no project mailing list). The NetGuardian Worker and D1/SPA stack live in the maintainer's repo; I've run and extended it locally for this proposal.
 
 I'd been trying to build security-focused products and tools for a while before joining OWASP. Got far enough each time to understand the problem but kept hitting walls around the parts I was lacking experience in, how real security tooling is architected, how findings get reported and acted on, how a codebase is maintained by an entire community rather than one person. It was pretty obvious what I needed, not a small team but an entire community of contributors who were stronger than me in the areas I lacked. So I joined OWASP-BLT, spent a few days reading the codebase, got BLT running locally, and understood what the community was building before opening my first PR. Since then I've had a decent number of meaningful PRs merged across BLT and its related repos, ranging from backend fixes and middleware work to new features, standalone repo migrations, taking the initiative on the GSoC 2026 ideas list and 350h project scoping, and actively working on and re-iterating goals on the community discussion board for 2026 around maintaining speed and quality of development while staying true to the core of what BLT is.
 
