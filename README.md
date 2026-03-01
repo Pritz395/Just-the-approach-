@@ -10,6 +10,21 @@
 
 This proposal connects the existing BLT-NetGuardian autonomous Worker to BLT's triage and issue-tracking through a zero-trust ingestion path, CVE-aware triage, and verified downstream events. The idea itself was part of my core GSoC ideas initiative plan. It builds directly on my recent BLT contribution (PR #5057: CVE search, filtering, caching, autocomplete, and Issue model CVE columns) by enriching new security Findings with CVE metadata so triaging is faster.
 
+## What This Enables
+
+- Zero-trust ingestion for security findings with replay resistance and strict freshness.
+- CVE-aware triage at scale with server-side decrypt and audited access.
+- Verified, signed events for downstream programs (Rewards, RepoTrust).
+- A first-class desktop app (Flutter) for local runs with envelope signing, offline queue, and retry.
+- A fully serverless footprint: GitHub Pages SPA + Cloudflare Worker + D1; no new Django/DRF/PostgreSQL in BLT to ship v1.
+
+```mermaid
+flowchart LR
+  A[Agents] --> B[Ingest] --> C[Worker] --> D[Triage] --> E[Events]
+```
+
+---
+
 The Worker already handles autonomous discovery (CT logs, GitHub, blockchain) and scanning (Web2, Web3, static, contract), staging results in KV. This project doesn't rewrite any of that. What it does:
 
 - Adds a BLT exporter inside the Worker that builds and sends signed `ztr-finding-1` envelopes to a dedicated ingestion route
@@ -88,7 +103,11 @@ Webhook headers: `X-BLT-Webhook-Signature: sha256=<hex>` and `X-BLT-Webhook-Time
 
 A few explicit non-goals: no Django/DRF endpoints or templates in the BLT main repo, no PostgreSQL migrations, no heavy PDF pipeline by default (CSV is required; PDF is optional and timeboxed), and evidence never touches logs in any readable form.
 
-There's also an optional Flutter desktop companion (not core to GSoC) that builds and signs `ztr-finding-1` envelopes locally and POSTs to the Worker with an offline queue and retry. It plugs into the same contract so it can be added without touching anything else.
+**BLT main repo touch points (allowed when needed)**  
+While the solution is serverless-first, minimal, well-scoped changes in the BLT main repo are acceptable if integration requires them (e.g. a small permission hook or signal, narrow model tweaks or admin flags, non-breaking API/webhook hooks). Any change must be narrowly scoped, approved by maintainers, documented, and covered by tests. No new heavy endpoints/templates or large PostgreSQL models are planned for GSoC v1.
+
+**Flutter desktop client (core component)**  
+The Flutter desktop app (Windows/macOS/Linux) is a first-class NetGuardian deliverable: builds/sends signed ztr-finding-1 envelopes (HMAC-SHA256) to `/api/ng/ingest`; offline queue + retry on flaky networks; minimal UI (target selection, preview, send; links back to triage SPA). Ships as part of v1 (not optional) and follows the same ingestion contract as the autonomous Worker.
 
 ---
 
@@ -98,9 +117,9 @@ Every envelope needs these fields: `version` ("ztr-finding-1"), `sender_id`, `ki
 
 For signing, canonical JSON is produced with the `signature` field removed, keys sorted, no extra whitespace, UTF-8 encoded. Then HMAC-SHA256 over those bytes, compared with `hmac.compare_digest`. This is written explicitly from the spec, not generated.
 
-On replay and freshness: the server enforces a ±5 min window on `issued_at` and the DB has `UNIQUE(sender_id, nonce)` so any duplicate just gets a `200 {status: "duplicate"}` back instead of an error.
+On replay and freshness: the server enforces a ±5 min window on `issued_at` and the DB has `UNIQUE(sender_id, nonce)` so any duplicate just gets a `200 {status: "duplicate"}` back instead of an error. **Timestamp trust:** Server verifies `issued_at` inside the signed envelope; X-BLT-Timestamp is never trusted for security decisions (advisory only for logs/rate-limit).
 
-Evidence is AES-GCM encrypted at rest with a rotatable Worker-managed key. The SPA only ever sees digests, sizes, or pointers, never the actual content. Every decrypt is written to `access_logs`. Nothing sensitive ever appears in logs. The 1 MiB envelope cap is enforced with a 413 and is configurable per org.
+Evidence is AES-GCM encrypted at rest with a rotatable Worker-managed key. **AES-GCM key management:** Keys are stored in Cloudflare environment secrets. Each ciphertext stores a key version; rotation occurs via re-encrypt-on-access or a background migration. The SPA only ever sees digests, sizes, or pointers, never the actual content. Every decrypt is written to `access_logs`. Nothing sensitive ever appears in logs. **1 MiB cap:** Applies to the entire HTTP request body (the JSON envelope as received over the wire, after JSON serialization); enforced with 413 and configurable per org.
 
 All Finding queries are scoped to the org. Convert-to-Issue checks org ownership before doing anything. Rate limits are per org. The nonce just needs to be unique per `sender_id`. Recommended format: `"<unix_ts>-"` (ordering not required; uniqueness is).
 
@@ -112,10 +131,10 @@ All Finding queries are scoped to the org. Convert-to-Issue checks org ownership
 |------|-------|
 | 1 | Spec + D1 schema + scaffolding |
 | 2 | Ingestion verification, replay, caps |
-| 3 | Auth + triage SPA + server-side decrypt + audit |
-| 4 | CVE plumbing (BLT-API) + CVE filters |
-| 5 | Dedup/idempotency + CSV export (baseline) |
-| 6 | Triage polish + RFIs + midterm E2E |
+| 3 | Auth + org scoping + /findings list |
+| 4 | /findings/{id} + server-side decrypt + audit + permissions |
+| 5 | CVE plumbing (BLT-API) + Dedup/idempotency + CSV scaffold |
+| 6 | Triage polish + RFIs + midterm E2E + blog post |
 | 7 | Fidelity fixtures and acceptance gates |
 | 8 | Consensus for criticals + quotas/back-pressure |
 | 9 | Remediation and insights (static) |
@@ -141,35 +160,42 @@ Implement `POST /api/ng/ingest` and `/batch`: signature verify, ±5 min skew enf
 
 ---
 
-### Week 3 — Auth + Triage SPA + Server-side Decrypt + Audit
+### Week 3 — Auth + org scoping + /findings list
 
-Set up GitHub OAuth (Auth Code + PKCE) in the Worker. Build the SPA login flow. Implement `/api/ng/findings` (list with filters/paging) and `/api/ng/findings/{id}` (redacted detail with server-side decrypted snippet). Write `access_logs` on every evidence view. Enforce org-scoped permission checks throughout.
+- GitHub OAuth + PKCE in Worker; secure session cookie.
+- Org scoping and permission checks on list queries.
+- `/api/ng/findings` with filters/paging/sort; SPA list view (no detail yet).
 
-**Exit criterion:** Login working, triage list/detail pages functional, decrypt and audit path working, org-scoped access enforced.
-
----
-
-### Week 4 — CVE Plumbing (BLT-API) + CVE Filters
-
-Integrate BLT-API `normalize_cve_id`/`get_cve_score`. Store `cve_id` and `cve_score` on Finding. Extend filters (`cve_id`, `cve_score_min`/`max`). Add CVE filter inputs and a Related CVEs panel to the SPA. Write mapping tests.
-
-**Exit criterion:** CVE enrichment and filters functional, UI shows CVE columns, tests passing.
+**Exit criterion:** Login working, org-scoped list functional, permission boundaries tested.
 
 ---
 
-### Week 5 — Dedup/Idempotency + CSV Export (Baseline)
+### Week 4 — /findings/{id} + server-side decrypt + audit + permissions
 
-Enforce fingerprint uniqueness `(rule_id, target_url, selector?, evidence_digest)` and upsert semantics. Write concurrency and race condition tests. Add Worker CSV export endpoint with redaction. Add Export CSV button in SPA. Write snapshot tests confirming no plaintext secrets in export.
+- `/api/ng/findings/{id}` returns redacted metadata + server-side decrypted snippet.
+- Audit logging on every evidence view; enforce org membership and permission checks.
+- SPA detail view: redacted snippet, access audit indicator, "Convert to Issue" (stub).
 
-**Exit criterion:** Dedup proven under concurrency, CSV export working with redaction snapshot tests passing.
+**Exit criterion:** Detail and decrypt path working, audit log on every evidence view, org-scoped access enforced.
 
 ---
 
-### Week 6 — Triage Polish + RFIs + Midterm E2E
+### Week 5 — CVE plumbing (BLT-API) + Dedup/idempotency + CSV scaffold
 
-Improve the evidence viewer. Add canned RFI markdown fragments rendered safely. Run the full midterm end-to-end demo: login, signed ingestion, Finding in D1, triage list/detail, server-side decrypt, Convert-to-Issue (BLT-API), verified event queued, CSV export.
+- Integrate BLT-API `normalize_cve_id`/`get_cve_score`; store `cve_id`/`cve_score` on Finding; SPA CVE filters.
+- Enforce fingerprint uniqueness `(rule_id, target_url, selector?, evidence_digest)` with upsert semantics; concurrency tests.
+- CSV export endpoint with redaction; SPA "Export CSV" button; snapshot tests.
 
-**Exit criterion:** E2E demo runs clean end-to-end. Midterm checkpoint passed.
+**Exit criterion:** CVE enrichment and filters functional, dedup proven under concurrency, CSV export with redaction tests passing.
+
+---
+
+### Week 6 — Triage polish + RFIs + midterm E2E + blog post
+
+- Evidence viewer polish; canned RFI fragments; midterm E2E: login → ingest → triage → decrypt → Convert-to-Issue (BLT-API) → verified event → CSV.
+- **Public technical blog post (midterm):** architecture, security invariants, integration approach, and lessons learned.
+
+**Exit criterion:** E2E demo runs clean end-to-end; midterm blog post published; midterm checkpoint passed.
 
 ---
 
