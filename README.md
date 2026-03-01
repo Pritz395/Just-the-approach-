@@ -306,16 +306,17 @@ Weekly written update every Friday in Green/Yellow/Red format covering goals, pr
 
 ---
 
-## AI Tooling and Safety
+## LLM Usage Considerations
 
-**IDE:** Cursor.
+In line with OWASP/GSoC guidelines on responsible and transparent use of AI and LLMs:
 
-**Models:**
-- Claude Opus 4.5 for design-heavy phases: `ztr-finding-1` spec, reconfirmation gate tradeoffs, events payload shape, midterm failure modes
-- Claude Sonnet 4.5 for repetitive scaffolding: Worker handlers, SPA filters/UI, D1 queries, UX copy, RFI prose, fixtures, rate-limit tests, remediation fragments, CSV/PDF snapshot tests, events docs, checklists, runbooks, final summary
-- GPT-5.2 as a second opinion on security-sensitive code: secrets/failure behavior in the exporter, timestamp/nonce/signature error paths, security-impacting patches
+**Tools:** IDE: Cursor. Models used for supportive work only: Claude Opus 4.5 (design-heavy phases: spec, tradeoffs, payload shape); Claude Sonnet 4.5 (scaffolding: handlers, SPA/UI, D1 queries, docs, fixtures, runbooks); GPT-5.2 (second opinion on security-sensitive code: exporter behavior, timestamp/nonce/signature paths).
 
-**Guardrails:** Security-critical code (envelope verification, canonicalization, signing, nonce handling, server-side decrypt, permission checks) is hand-written from the spec and covered by tests. No unreviewed AI generation in these paths. AI assistance is limited to boilerplate, documentation, and fixtures. All changes pass code review and test gates. Invariants are codified in tests; refactors must preserve them.
+**How and why:** LLMs are used only for supportive tasks—e.g. clarity and structure of documentation, variable names, test-case ideas—not for substantial code, design, or research without full review. All design and security-critical decisions (encryption, signing, verification, access control) are my own; any LLM-suggested code in those areas is treated as a draft, independently reasoned about, rewritten as needed, and covered by tests before merge. Security-critical code (envelope verification, canonicalization, signing, nonce handling, server-side decrypt, permission checks) is hand-written from the spec and covered by tests. AI assistance is limited to boilerplate, documentation, and fixtures; all changes pass code review and test gates.
+
+**Review and verification:** All LLM-assisted content is independently reviewed, tested, and verified by me. I do not submit unreviewed AI-generated content. Any material LLM influence on a design or snippet is validated for correctness.
+
+**LLMs were used for supportive or editorial purposes in this work. All outputs were reviewed and validated by the contributor to ensure accuracy and originality.**
 
 ---
 
