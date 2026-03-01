@@ -32,7 +32,8 @@ All NetGuardian backend logic runs in Cloudflare Workers with D1. The triage UI 
 - A first-class Flutter desktop app for local runs with envelope signing, offline queue, and retry
 - Fully serverless footprint: GitHub Pages SPA + Cloudflare Worker + D1; no new Django/DRF endpoints or PostgreSQL migrations in BLT to ship v1; only minimal, non-breaking hooks if explicitly approved
 
-![What This Enables](docs/diagram-what-enables.png)
+![What This Enables](docs/diagram-what-enables.png)  
+*RED for BLT's theme.*
 
 ---
 
@@ -108,9 +109,11 @@ Save as **`docs/hero-banner.png`**.
 
 ### Inline preview
 
-![Triage SPA](docs/mockup-triage.png)
+![Triage SPA](docs/mockup-triage.png)  
+*RED for BLT's theme.*
 
-![Flutter desktop](docs/mockup-flutter.png)
+![Flutter desktop](docs/mockup-flutter.png)  
+*RED for BLT's theme.*
 
 <!-- Optional when added: ![12-week timeline](docs/timeline-12weeks.png) ![Hero](docs/hero-banner.png) -->
 
@@ -120,7 +123,8 @@ Save as **`docs/hero-banner.png`**.
 
 The whole thing is serverless. The Worker (Python) handles all backend logic, D1 (SQLite) is the storage layer, and the triage UI is a static SPA on GitHub Pages. BLT-API handles CVE lookups and Issue creation. No Django, no PostgreSQL, no Celery. CORS is locked to GitHub Pages origins only; only GitHub Pages origin(s) are permitted for SPA to Worker requests.
 
-![Architecture — Clients, Cloudflare Worker, D1, GitHub Pages SPA, BLT-API, downstream](docs/diagram-architecture.png)
+![Architecture — Clients, Cloudflare Worker, D1, GitHub Pages SPA, BLT-API, downstream](docs/diagram-architecture.png)  
+*RED for BLT's theme.*
 
 The Worker does the heavy lifting: ingestion (`POST /api/ng/ingest` + `/batch`), triage list/detail APIs, server-side decrypt with audit logging, CVE enrichment, org-scoped auth via GitHub OAuth + PKCE, and outbox/webhooks. `X-BLT-Timestamp` is advisory for logs and rate-limiting only; `issued_at` inside the signed envelope governs expiry.
 
