@@ -246,53 +246,88 @@ Security review: key handling, AES-GCM usage, nonce uniqueness, cache-poisoning 
 
 ## Flexibility and Change Management
 
-Worker modules (ingestion, triage, CVE, events) are kept thin and test-covered so swapping implementations doesn't ripple across the SPA or schema. All externally visible contracts (envelope `ztr-finding-1`, ingest/webhook headers, events payload) are versioned and tests enforce the invariants. Any non-trivial change ships with a short ADR-style note covering what, why, alternatives considered, and schedule impact.
+Each module (ingestion, triage, CVE, events) is kept small and test-covered so changing one doesn't break the SPA or schema. All the contracts that face outward (the `ztr-finding-1` envelope, ingest and webhook headers, events payload) are versioned and locked by tests. Anything non-trivial gets a short note: what changed, why, what else I considered, and whether it touches the schedule.
 
 ---
 
 ## Testing Strategy
 
-**Envelope/ingestion:** Valid/expired/future/replayed envelopes, duplicate idempotency, signature mismatch, canonicalization stability, 1 MiB cap, consistent error codes, no plaintext in logs.
+**Envelope/ingestion:**
+- Valid, expired, future-dated, and replayed envelopes
+- Duplicate idempotency and signature mismatch
+- Canonicalization stability and 1 MiB cap
+- Consistent error codes, no plaintext in logs
 
-**Dedup/idempotency:** Same fingerprint collapses to one Finding, variant `evidence_digest` creates new attachment, concurrent races resolve correctly.
+**Dedup/idempotency:**
+- Same fingerprint collapses to one Finding
+- Variant `evidence_digest` creates a new attachment
+- Concurrent races resolve correctly
 
-**Triage and permissions:** Org scoping and leakage negatives, pagination/sort, evidence access always audited, CVE filter correctness, cache-poisoning resistance.
+**Triage and permissions:**
+- Org scoping and leakage negatives
+- Pagination/sort, evidence access always audited
+- CVE filter correctness and cache-poisoning resistance
 
-**Consensus and resilience:** Critical reconfirmation gate, quotas, 429 Retry-After honored end-to-end.
+**Consensus and resilience:**
+- Critical reconfirmation gate
+- Quotas and 429 Retry-After honored end-to-end
 
-**Reports:** CSV snapshot tests with no plaintext secrets; PDF snapshot tests if implemented with same redaction guarantees.
+**Reports:**
+- CSV snapshot tests with no plaintext secrets
+- PDF snapshot tests if implemented, same redaction guarantees
 
-**Metrics/fidelity:** Worker to BLT ingestion success and CVE match thresholds enforced in CI.
+**Metrics/fidelity:**
+- Ingestion success and CVE match thresholds enforced in CI
 
 ---
 
 ## Risks & Mitigations
 
-**Crypto (Worker):** HMAC-SHA256 only for v1, Ed25519 post-v1. All crypto paths are hand-written from the spec, property tested, and use timing-safe compare throughout.
+**Crypto:** HMAC-SHA256 for v1, Ed25519 post-v1. All crypto paths are hand-written from the spec, property tested, and use timing-safe compare throughout.
 
-**D1 concurrency:** Unique indexes enforced on all fingerprint and nonce columns, concurrent upserts tested explicitly, short transactions, Cron Triggers handle cleanup.
+**D1 concurrency:**
+- Unique indexes on all fingerprint and nonce columns
+- Concurrent upserts tested explicitly, short transactions
+- Cron Triggers handle cleanup
 
-**CORS and auth:** GitHub Pages origin allowlisted only, OAuth + PKCE, HttpOnly/SameSite cookies. Graceful outage handling with clear errors and retry guidance; short-lived sessions with refresh; CSRF/state/PKCE checks logged and tested.
+**CORS and auth:**
+- GitHub Pages origin allowlisted only, OAuth + PKCE, HttpOnly/SameSite cookies
+- Graceful outage handling with clear errors and retry guidance
+- CSRF/state/PKCE checks logged and tested
 
 **Key rotation:** Key version stored in each ciphertext, rotation via re-encrypt-on-access or background migration, no hard cutover needed.
 
-**Time drift:** ±5 min enforced on `issued_at`, NTP recommended on agents, `received_at` recorded on every envelope, skew logged.
+**Time drift:** Plus or minus 5 min enforced on `issued_at`, NTP recommended on agents, `received_at` recorded on every envelope, skew logged.
 
-**Rate limiting/back-pressure:** Per-org/hour quotas enforced with 429 and Retry-After; ingest pressure and error rates instrumented; emergency "pause ingest" switch documented in runbook.
+**Rate limiting:**
+- Per-org/hour quotas with 429 and Retry-After
+- Ingest pressure and error rates instrumented
+- Emergency "pause ingest" switch in the runbook
 
-**D1 backup/DR:** Nightly D1 export and restore drill once per cycle; RPO/RTO documented and simulated recovery tested.
+**D1 backup:**
+- Nightly D1 export and restore drill once per cycle
+- RPO/RTO documented and simulated recovery tested
 
-**Data retention/privacy:** Org-configurable retention for `evidence_meta` and `access_logs`; TTL cleanup via Cron Triggers; runbook for data deletion and right-to-erasure requests.
+**Data retention:**
+- Org-configurable retention for `evidence_meta` and `access_logs`
+- TTL cleanup via Cron Triggers
+- Runbook covers data deletion and right-to-erasure requests
 
-**Frontend hardening:** Strict CORS allowlist (GitHub Pages only), CSP on SPA, and SRI on static assets to reduce XSS and supply-chain risk.
+**Frontend:**
+- Strict CORS allowlist (GitHub Pages only)
+- CSP on SPA and SRI on static assets
 
 ---
 
 ## Communication Plan
 
-I'm on IST and my mentors are on UTC. We already have weekly Slack huddles running as part of the current contribution cycle, so the GSoC-specific huddle would follow the same format on a separate day of the week, 20-30 mins. A default window will be published at the start of community bonding with alternates for holidays.
+I'm on IST and my mentors are on UTC. We already have Slack huddles going from the current contribution cycle so the GSoC slot would just be a separate day, 20-30 mins. I'll put up a default time window at the start of community bonding with alternatives for holidays.
 
-Weekly written update every Friday in Green/Yellow/Red format covering goals, progress, explicit risks/mitigations, and next-week goals, posted to Slack and the relevant GH issue. All work is tracked in GH issues with a label scheme covering type, priority, and milestone. PRs are linked to issues with a 48h review SLA; if no response by day 3 I'll ping via Slack and the issue. Calendar holds are set for the Week 6 midterm demo and Week 12 final, each with a dry-run one business day before. Midterm and final both come with public blog posts.
+- Weekly written update every Friday covering goals, what got done, risks and how I'm handling them, and what's next; posted to Slack and the relevant GH issue
+- All work tracked in GH issues with labels for type, priority, and milestone; PRs linked back to their issues
+- 48h review turnaround target; if nothing by day 3 I'll ping on Slack and the issue
+- Calendar holds for Week 6 midterm and Week 12 final, each with a dry run the day before
+- Midterm and final both come with a public blog post
 
 ---
 
@@ -308,13 +343,13 @@ Weekly written update every Friday in Green/Yellow/Red format covering goals, pr
 
 ## LLM Usage Considerations
 
-In line with OWASP/GSoC guidelines on responsible and transparent use of AI and LLMs:
+In line with OWASP/GSoC guidelines:
 
-**Tools:** IDE: Cursor. Models used for supportive work only: Claude Opus 4.5 (design-heavy phases: spec, tradeoffs, payload shape); Claude Sonnet 4.5 (scaffolding: handlers, SPA/UI, D1 queries, docs, fixtures, runbooks); GPT-5.2 (second opinion on security-sensitive code: exporter behavior, timestamp/nonce/signature paths).
+**Tools:** Cursor as the IDE. Models: Claude Opus 4.5 for design-heavy work (spec, tradeoffs, payload shape); Claude Sonnet 4.5 for scaffolding (handlers, SPA/UI, D1 queries, docs, fixtures, runbooks); GPT-5.2 as a second opinion on security-sensitive code (exporter behavior, timestamp/nonce/signature paths).
 
-**How and why:** LLMs are used only for supportive tasks—e.g. clarity and structure of documentation, variable names, test-case ideas—not for substantial code, design, or research without full review. All design and security-critical decisions (encryption, signing, verification, access control) are my own; any LLM-suggested code in those areas is treated as a draft, independently reasoned about, rewritten as needed, and covered by tests before merge. Security-critical code (envelope verification, canonicalization, signing, nonce handling, server-side decrypt, permission checks) is hand-written from the spec and covered by tests. AI assistance is limited to boilerplate, documentation, and fixtures; all changes pass code review and test gates.
+**How I used them:** Only for supportive tasks like improving documentation clarity, variable names, or test-case ideas. No substantial code, design decisions, or research was auto-generated without full review. All the security-critical decisions around encryption, signing, verification, and access control are mine. Any LLM suggestion in those areas was treated as a starting draft, reasoned through independently, rewritten as needed, and covered by tests before merge.
 
-**Review and verification:** All LLM-assisted content is independently reviewed, tested, and verified by me. I do not submit unreviewed AI-generated content. Any material LLM influence on a design or snippet is validated for correctness.
+**Review:** Everything LLM-assisted was independently reviewed, tested, and verified by me before it went in. No unreviewed AI output was submitted.
 
 **LLMs were used for supportive or editorial purposes in this work. All outputs were reviewed and validated by the contributor to ensure accuracy and originality.**
 
