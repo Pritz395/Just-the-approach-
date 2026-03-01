@@ -16,7 +16,7 @@ This proposal connects the existing BLT-NetGuardian autonomous Worker to BLT's t
 - CVE-aware triage at scale with server-side decrypt and audited access.
 - Verified, signed events for downstream programs (Rewards, RepoTrust).
 - A first-class desktop app (Flutter) for local runs with envelope signing, offline queue, and retry.
-- A fully serverless footprint: GitHub Pages SPA + Cloudflare Worker + D1; no new Django/DRF/PostgreSQL in BLT to ship v1.
+- A fully serverless footprint: GitHub Pages SPA + Cloudflare Worker + D1; no new Django/DRF endpoints or PostgreSQL migrations in BLT to ship v1; only minimal, non-breaking hooks if explicitly approved.
 
 ```mermaid
 flowchart LR
@@ -123,7 +123,7 @@ For signing, canonical JSON is produced with the `signature` field removed, keys
 
 On replay and freshness: the server enforces a ±5 min window on `issued_at` and the DB has `UNIQUE(sender_id, nonce)` so any duplicate just gets a `200 {status: "duplicate"}` back instead of an error. **Timestamp trust:** Server verifies `issued_at` inside the signed envelope; X-BLT-Timestamp is never trusted for security decisions (advisory only for logs/rate-limit).
 
-Evidence is AES-GCM encrypted at rest with a rotatable Worker-managed key. **AES-GCM key management:** Keys are stored in Cloudflare environment secrets. Each ciphertext stores a key version; rotation occurs via re-encrypt-on-access or a background migration. The SPA only ever sees digests, sizes, or pointers, never the actual content. Every decrypt is written to `access_logs`. Nothing sensitive ever appears in logs. **1 MiB cap:** Applies to the entire HTTP request body (the JSON envelope as received over the wire, after JSON serialization); enforced with 413 and configurable per org.
+Evidence is AES-GCM encrypted at rest with a rotatable Worker-managed key. **AES-GCM key management:** Keys are stored in Cloudflare environment secrets. Each ciphertext stores a key version; rotation occurs via re-encrypt-on-access or a background migration. The SPA only ever sees digests, sizes, or pointers, never the actual content. Every decrypt is written to `access_logs`. Nothing sensitive ever appears in logs. **1 MiB (1,048,576 bytes) cap** applies to the entire HTTP request body (the JSON envelope as received over the wire, after JSON serialization); enforced with 413 and configurable per org.
 
 All Finding queries are scoped to the org. Convert-to-Issue checks org ownership before doing anything. Rate limits are per org. The nonce just needs to be unique per `sender_id`. Recommended format: `"<unix_ts>-"` (ordering not required; uniqueness is).
 
