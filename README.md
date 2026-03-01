@@ -6,8 +6,6 @@
 
 > Zero-trust ingestion for security findings, CVE-aware triage, and verified events—all serverless (Cloudflare Worker + D1 + GitHub Pages SPA). No new Django in BLT main repo.
 
-<!-- Optional hero: ![NetGuardian](docs/hero-banner.png) -->
-
 ---
 
 ## Abstract
@@ -39,7 +37,7 @@ All NetGuardian backend logic runs in Cloudflare Workers with D1. The triage UI 
 
 ## Proposal visuals
 
-We use visuals throughout so the proposal is easy to scan and has a clear personal touch. Below: what each image is for, where it goes, and copy-paste briefs you can use in Notebook LM, Gemini, Figma, or Excalidraw.
+We use visuals throughout so the proposal is easy to scan and has a clear personal touch.
 
 | # | Asset | File | Where it appears |
 |---|--------|------|-------------------|
@@ -47,18 +45,6 @@ We use visuals throughout so the proposal is easy to scan and has a clear person
 | 2 | **What This Enables** infographic | `docs/diagram-what-enables.png` | What This Enables |
 | 3 | **Triage SPA** GUI mockup | `docs/mockup-triage.png` | This section |
 | 4 | **Flutter desktop** GUI mockup | `docs/mockup-flutter.png` | This section |
-| 5 | **12-week timeline** strip (optional) | `docs/timeline-12weeks.png` | Above or inside 12-Week Implementation Plan |
-
----
-
-### 5. 12-week timeline strip (optional)
-
-*Horizontal strip: Community Bonding → Weeks 1–6 → Midterm → Weeks 7–12 → Final. Quick at-a-glance.*
-
-**Copy-paste brief:**  
-Create a single horizontal timeline image (PNG or SVG, ~1000px wide). Label segments: "Community Bonding" | "Weeks 1–2" | "Weeks 3–4" | "Weeks 5–6" | "Midterm" | "Weeks 7–8" | "Weeks 9–10" | "Weeks 11–12" | "Final". Simple blocks or a single bar with dividers. Minimal text, clear labels. Style: clean, matches the proposal. Output only the image.
-
-Save as **`docs/timeline-12weeks.png`**.
 
 ---
 
@@ -69,8 +55,6 @@ Save as **`docs/timeline-12weeks.png`**.
 
 ![Flutter desktop](docs/mockup-flutter.png)  
 *RED for BLT's theme.*
-
-<!-- Optional when added: ![12-week timeline](docs/timeline-12weeks.png) ![Hero](docs/hero-banner.png) -->
 
 ---
 
@@ -110,8 +94,6 @@ All Finding queries are org-scoped. Convert-to-Issue checks org ownership first.
 ---
 
 ## 12-Week Implementation Plan
-
-<!-- Optional timeline: ![12-week timeline](docs/timeline-12weeks.png) -->
 
 | Week | Focus |
 |---|---|
