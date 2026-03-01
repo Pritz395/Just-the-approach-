@@ -20,7 +20,11 @@ This proposal connects the existing BLT-NetGuardian autonomous Worker to BLT's t
 
 ```mermaid
 flowchart LR
-  A[Agents] --> B[Ingest] --> C[Worker] --> D[Triage] --> E[Events]
+  Flutter["Flutter Desktop"] -->|ztr-finding-1| Worker["Cloudflare Worker"]
+  Worker -->|JSON APIs| SPA["GitHub Pages SPA"]
+  Worker --> D1["Cloudflare D1"]
+  Worker --> BLTAPI["BLT-API - CVE & Issues"]
+  Worker --> Down["Verified Webhooks - Rewards & RepoTrust"]
 ```
 
 ---
