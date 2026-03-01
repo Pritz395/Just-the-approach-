@@ -1,4 +1,10 @@
-# NetGuardian — GSoC 2026 Proposal
+# :sandwich: BLT: NetGuardian
+
+**GSoC 2026 Proposal**
+
+![GSoC 2026](https://img.shields.io/badge/GSoC-2026-blue) ![OWASP BLT](https://img.shields.io/badge/OWASP-BLT-orange) ![Serverless](https://img.shields.io/badge/Stack-Worker%20%2B%20D1%20%2B%20GitHub%20Pages-green)
+
+> Zero-trust ingestion for security findings, CVE-aware triage, and verified events—all serverless (Cloudflare Worker + D1 + GitHub Pages SPA). No new Django in BLT main repo.
 
 ---
 
@@ -32,6 +38,25 @@ flowchart LR
   Worker --> BLTAPI["BLT-API - CVE & Issues"]
   Worker --> Down["Verified Webhooks - Rewards, RepoTrust, Preflight"]
 ```
+
+---
+
+## Design & UI preview
+
+*Placeholder for mockups—drop in screenshots or wireframes when you have them so the proposal has a personal, visual touch.*
+
+| Component | What it shows |
+|-----------|----------------|
+| **Triage SPA** (GitHub Pages) | Findings list (filters, paging), detail view with redacted snippet + "Convert to Issue", CSV export. Light, readable layout. |
+| **Flutter desktop** | Target selection, envelope preview, send button, link back to triage SPA. Minimal, focused UI. |
+
+- *Triage SPA mockup:* add image as `docs/mockup-triage.png` (or `.svg`) and link below.
+- *Flutter app mockup:* add image as `docs/mockup-flutter.png` (or `.svg`) and link below.
+
+<!-- Uncomment and fix paths once you have mockup images:
+![Triage SPA](docs/mockup-triage.png)
+![Flutter desktop](docs/mockup-flutter.png)
+-->
 
 ---
 
