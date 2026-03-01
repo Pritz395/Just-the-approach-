@@ -48,40 +48,6 @@ We use visuals throughout so the proposal is easy to scan and has a clear person
 | 3 | **Triage SPA** GUI mockup | `docs/mockup-triage.png` | This section |
 | 4 | **Flutter desktop** GUI mockup | `docs/mockup-flutter.png` | This section |
 | 5 | **12-week timeline** strip (optional) | `docs/timeline-12weeks.png` | Above or inside 12-Week Implementation Plan |
-| 6 | **Hero / cover** (optional) | `docs/hero-banner.png` | Right under the title blockquote |
-
----
-
-### 2. What This Enables — infographic
-
-*Same visual concept as the architecture diagram: futuristic, neon glow, dark tech background.*
-
-**Copy-paste prompt:**  
-Create a single infographic image (PNG or SVG, ~800–1000px wide) for "What NetGuardian enables." Use the exact same visual style as our system architecture diagram: futuristic, enhanced-AI aesthetic with glowing neon greens, purples, and oranges on a dark tech-patterned background. Five items in a horizontal row or grid, each with an illustrative icon and one short label: (1) Zero-trust ingestion — replay-resistant, fresh findings. (2) CVE-aware triage — server-side decrypt, audited access. (3) Verified events — signed events for Rewards, RepoTrust, Preflight. (4) Flutter desktop app — envelope signing, offline queue, retry. (5) Fully serverless — Worker + D1 + GitHub Pages, no Django in BLT. Glowing borders or connectors between items, same neon palette and illustrative icon style. No code. Output only the image.
-
-Save as **`docs/diagram-what-enables.png`**.
-
----
-
-### 3. Triage SPA — GUI mockup
-
-*Same visual concept as the architecture diagram: futuristic, neon glow, dark tech background.*
-
-**Copy-paste prompt:**  
-Create a single GUI mockup image (PNG or SVG) for a "NetGuardian Triage" web app. Use the exact same visual style as our system architecture diagram: futuristic, enhanced-AI aesthetic with glowing neon greens, purples, and oranges on a dark tech-patterned background. Show a single-page layout: left or top — filter controls (severity, CVE, date) and a table or list of findings (columns: ID, rule, severity, target, CVE). One row highlighted or a detail panel on the right showing: redacted snippet of evidence, "Convert to Issue" button, "Export CSV" option. UI elements should have the same neon glow, illustrative icons, and dark-background style as the architecture diagram. Placeholder text is fine. Output only the image.
-
-Save as **`docs/mockup-triage.png`**.
-
----
-
-### 4. Flutter desktop — GUI mockup
-
-*Same visual concept as the architecture diagram: futuristic, neon glow, dark tech background.*
-
-**Copy-paste prompt:**  
-Create a single GUI mockup image (PNG or SVG) for a "NetGuardian Flutter desktop" app window. Use the exact same visual style as our system architecture diagram: futuristic, enhanced-AI aesthetic with glowing neon greens, purples, and oranges on a dark tech-patterned background. Show a minimal desktop window with: (1) Target selection area (URL or scan target input) with neon-accent borders. (2) A small preview panel for the envelope or payload ("ztr-finding-1" or "Signed envelope ready"). (3) A prominent "Send to ingest" or "Submit" button with the same glow style. (4) A link or line like "Open triage in browser." Window chrome optional. Same illustrative icons and glowing connectors as the architecture diagram. Output only the image.
-
-Save as **`docs/mockup-flutter.png`**.
 
 ---
 
@@ -93,17 +59,6 @@ Save as **`docs/mockup-flutter.png`**.
 Create a single horizontal timeline image (PNG or SVG, ~1000px wide). Label segments: "Community Bonding" | "Weeks 1–2" | "Weeks 3–4" | "Weeks 5–6" | "Midterm" | "Weeks 7–8" | "Weeks 9–10" | "Weeks 11–12" | "Final". Simple blocks or a single bar with dividers. Minimal text, clear labels. Style: clean, matches the proposal. Output only the image.
 
 Save as **`docs/timeline-12weeks.png`**.
-
----
-
-### 6. Hero / cover (optional)
-
-*Banner under the title: project name + tagline or key stack. Sets the tone.*
-
-**Copy-paste brief:**  
-Create a short hero/banner image (PNG or SVG, ~1000×200px or similar). Content: "NetGuardian" as the main title and a one-line tagline like "Zero-trust ingestion & CVE-aware triage" or "Serverless security findings pipeline." Optional: small icons for Worker, D1, GitHub Pages. Style: modern, on-brand with the rest of the proposal. Output only the image.
-
-Save as **`docs/hero-banner.png`**.
 
 ---
 
