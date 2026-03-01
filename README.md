@@ -26,15 +26,13 @@ All NetGuardian backend logic runs in Cloudflare Workers with D1. The triage UI 
 
 ## What This Enables
 
-<!-- Optional infographic: ![What This Enables](docs/diagram-what-enables.png) -->
-
 - Zero-trust ingestion for security findings with replay resistance and strict freshness
 - CVE-aware triage at scale with server-side decrypt and audited access
 - Verified, signed events for downstream programs (BLT-Rewards, RepoTrust, Preflight)
 - A first-class Flutter desktop app for local runs with envelope signing, offline queue, and retry
 - Fully serverless footprint: GitHub Pages SPA + Cloudflare Worker + D1; no new Django/DRF endpoints or PostgreSQL migrations in BLT to ship v1; only minimal, non-breaking hooks if explicitly approved
 
-![What This Enables — clients to Worker to SPA, D1, BLT-API, downstream](docs/diagram-architecture.png)
+![What This Enables](docs/diagram-what-enables.png)
 
 ---
 
@@ -44,8 +42,8 @@ We use visuals throughout so the proposal is easy to scan and has a clear person
 
 | # | Asset | File | Where it appears |
 |---|--------|------|-------------------|
-| 1 | Architecture (swarm) | `docs/diagram-architecture.png` | What This Enables, Architecture & Stack |
-| 2 | **What This Enables** infographic | `docs/diagram-what-enables.png` | What This Enables (above the bullets or next to them) |
+| 1 | Architecture (swarm) | `docs/diagram-architecture.png` | Architecture & Stack only |
+| 2 | **What This Enables** infographic | `docs/diagram-what-enables.png` | What This Enables |
 | 3 | **Triage SPA** GUI mockup | `docs/mockup-triage.png` | This section |
 | 4 | **Flutter desktop** GUI mockup | `docs/mockup-flutter.png` | This section |
 | 5 | **12-week timeline** strip (optional) | `docs/timeline-12weeks.png` | Above or inside 12-Week Implementation Plan |
@@ -55,10 +53,10 @@ We use visuals throughout so the proposal is easy to scan and has a clear person
 
 ### 2. What This Enables — infographic
 
-*One panel: five value props with icons or short labels. Style: clean, same palette as the architecture diagram (or your choice). No code.*
+*Same visual concept as the architecture diagram: futuristic, neon glow, dark tech background.*
 
-**Copy-paste brief:**  
-Create a single infographic image (PNG or SVG, ~800px wide) for "What NetGuardian enables." Five horizontal or grid items, each with a small icon and one line of text: (1) Zero-trust ingestion — replay-resistant, fresh findings. (2) CVE-aware triage — server-side decrypt, audited access. (3) Verified events — signed events for Rewards, RepoTrust, Preflight. (4) Flutter desktop app — envelope signing, offline queue, retry. (5) Fully serverless — Worker + D1 + GitHub Pages, no Django in BLT. Style: modern, readable, same color vibe as the rest of the proposal. Output only the image.
+**Copy-paste prompt:**  
+Create a single infographic image (PNG or SVG, ~800–1000px wide) for "What NetGuardian enables." Use the exact same visual style as our system architecture diagram: futuristic, enhanced-AI aesthetic with glowing neon greens, purples, and oranges on a dark tech-patterned background. Five items in a horizontal row or grid, each with an illustrative icon and one short label: (1) Zero-trust ingestion — replay-resistant, fresh findings. (2) CVE-aware triage — server-side decrypt, audited access. (3) Verified events — signed events for Rewards, RepoTrust, Preflight. (4) Flutter desktop app — envelope signing, offline queue, retry. (5) Fully serverless — Worker + D1 + GitHub Pages, no Django in BLT. Glowing borders or connectors between items, same neon palette and illustrative icon style. No code. Output only the image.
 
 Save as **`docs/diagram-what-enables.png`**.
 
@@ -66,10 +64,10 @@ Save as **`docs/diagram-what-enables.png`**.
 
 ### 3. Triage SPA — GUI mockup
 
-*Web UI: findings list and detail view. Gives reviewers a clear picture of the triage experience.*
+*Same visual concept as the architecture diagram: futuristic, neon glow, dark tech background.*
 
-**Copy-paste brief:**  
-Create a single GUI mockup image (PNG or SVG) for a "NetGuardian Triage" web app. Show a clean, modern single-page layout: left or top — filters (severity, CVE, date) and a table or list of findings (columns: ID, rule, severity, target, CVE). One row highlighted or a detail panel on the right showing: redacted snippet of evidence, "Convert to Issue" button, and an "Export CSV" option. Light background, readable typography, no real data — placeholder text is fine. Style: professional, consistent with a security triage tool. Output only the image.
+**Copy-paste prompt:**  
+Create a single GUI mockup image (PNG or SVG) for a "NetGuardian Triage" web app. Use the exact same visual style as our system architecture diagram: futuristic, enhanced-AI aesthetic with glowing neon greens, purples, and oranges on a dark tech-patterned background. Show a single-page layout: left or top — filter controls (severity, CVE, date) and a table or list of findings (columns: ID, rule, severity, target, CVE). One row highlighted or a detail panel on the right showing: redacted snippet of evidence, "Convert to Issue" button, "Export CSV" option. UI elements should have the same neon glow, illustrative icons, and dark-background style as the architecture diagram. Placeholder text is fine. Output only the image.
 
 Save as **`docs/mockup-triage.png`**.
 
@@ -77,10 +75,10 @@ Save as **`docs/mockup-triage.png`**.
 
 ### 4. Flutter desktop — GUI mockup
 
-*Desktop app: target selection, envelope preview, send. Shows the client side of the pipeline.*
+*Same visual concept as the architecture diagram: futuristic, neon glow, dark tech background.*
 
-**Copy-paste brief:**  
-Create a single GUI mockup image (PNG or SVG) for a "NetGuardian Flutter desktop" app window. Show a minimal desktop UI: (1) A target selection area (e.g. URL or scan target input). (2) A small preview of the envelope or payload (e.g. "ztr-finding-1" or "Signed envelope ready"). (3) A prominent "Send to ingest" or "Submit" button. (4) A short line like "Open triage in browser" or a link. Style: minimal, focused, desktop app (window chrome optional). Clean and modern. Output only the image.
+**Copy-paste prompt:**  
+Create a single GUI mockup image (PNG or SVG) for a "NetGuardian Flutter desktop" app window. Use the exact same visual style as our system architecture diagram: futuristic, enhanced-AI aesthetic with glowing neon greens, purples, and oranges on a dark tech-patterned background. Show a minimal desktop window with: (1) Target selection area (URL or scan target input) with neon-accent borders. (2) A small preview panel for the envelope or payload ("ztr-finding-1" or "Signed envelope ready"). (3) A prominent "Send to ingest" or "Submit" button with the same glow style. (4) A link or line like "Open triage in browser." Window chrome optional. Same illustrative icons and glowing connectors as the architecture diagram. Output only the image.
 
 Save as **`docs/mockup-flutter.png`**.
 
@@ -108,17 +106,13 @@ Save as **`docs/hero-banner.png`**.
 
 ---
 
-### Inline preview (uncomment when files exist)
+### Inline preview
 
-Add each file under `docs/` with the filename above, then uncomment the lines that match.
-
-<!--
-![What This Enables infographic](docs/diagram-what-enables.png)
 ![Triage SPA](docs/mockup-triage.png)
+
 ![Flutter desktop](docs/mockup-flutter.png)
-![12-week timeline](docs/timeline-12weeks.png)
-![Hero](docs/hero-banner.png)
--->
+
+<!-- Optional when added: ![12-week timeline](docs/timeline-12weeks.png) ![Hero](docs/hero-banner.png) -->
 
 ---
 
