@@ -10,13 +10,12 @@
 
 This proposal connects the existing BLT-NetGuardian autonomous Worker to BLT's triage and issue-tracking through a zero-trust ingestion path, CVE-aware triage, and verified downstream events. The idea itself was part of my core GSoC ideas initiative plan. It builds directly on my recent BLT contribution (PR #5057: CVE search, filtering, caching, autocomplete, and Issue model CVE columns) by enriching new security Findings with CVE metadata so triaging is faster.
 
-## What This Enables
-
-- Zero-trust ingestion for security findings with replay resistance and strict freshness.
-- CVE-aware triage at scale with server-side decrypt and audited access.
-- Verified, signed events for downstream programs (Rewards, RepoTrust).
-- A first-class desktop app (Flutter) for local runs with envelope signing, offline queue, and retry.
-- A fully serverless footprint: GitHub Pages SPA + Cloudflare Worker + D1; no new Django/DRF endpoints or PostgreSQL migrations in BLT to ship v1; only minimal, non-breaking hooks if explicitly approved.
+**What This Enables:**
+- Zero-trust ingestion for security findings with replay resistance and strict freshness
+- CVE-aware triage at scale with server-side decrypt and audited access
+- Verified, signed events for downstream programs (Rewards, RepoTrust)
+- A first-class desktop app (Flutter) for local runs with envelope signing, offline queue, and retry
+- A fully serverless footprint: GitHub Pages SPA + Cloudflare Worker + D1; no new Django/DRF endpoints or PostgreSQL migrations in BLT to ship v1; only minimal, non-breaking hooks if explicitly approved
 
 ```mermaid
 flowchart LR
@@ -26,8 +25,6 @@ flowchart LR
   Worker --> BLTAPI["BLT-API - CVE & Issues"]
   Worker --> Down["Verified Webhooks - Rewards & RepoTrust"]
 ```
-
----
 
 The Worker already handles autonomous discovery (CT logs, GitHub, blockchain) and scanning (Web2, Web3, static, contract), staging results in KV. This project doesn't rewrite any of that. What it does:
 
@@ -41,7 +38,7 @@ The Worker already handles autonomous discovery (CT logs, GitHub, blockchain) an
 
 ## 2. Architecture & Stack
 
-The whole thing is serverless. The Worker (Python) handles all backend logic, D1 (SQLite) is the storage layer, and the triage UI is a static SPA on GitHub Pages. BLT-API takes care of CVE lookups and Issue creation. No Django, no PostgreSQL, no Celery anywhere in this stack. CORS: GitHub Pages → Worker allowed origins only.
+The whole thing is serverless. The Worker (Python) handles all backend logic, D1 (SQLite) is the storage layer, and the triage UI is a static SPA on GitHub Pages. BLT-API takes care of CVE lookups and Issue creation. No Django, no PostgreSQL, no Celery. CORS is locked to GitHub Pages origins only.
 
 ```mermaid
 flowchart TB
@@ -81,63 +78,63 @@ flowchart TB
   Events --> Down
 ```
 
-The Worker does the heavy lifting: ingestion (`POST /api/ng/ingest` + `/batch`), triage list/detail APIs, server-side decrypt with audit logging, CVE enrichment, org-scoped auth via GitHub OAuth + PKCE, and outbox/webhooks. One thing worth noting: `X-BLT-Timestamp` is only advisory for logs and rate-limiting; the `issued_at` field inside the signed envelope is what actually governs expiry.
+The Worker does the heavy lifting: ingestion (`POST /api/ng/ingest` + `/batch`), triage list/detail APIs, server-side decrypt with audit logging, CVE enrichment, org-scoped auth via GitHub OAuth + PKCE, and outbox/webhooks. `X-BLT-Timestamp` is advisory for logs and rate-limiting only; `issued_at` inside the signed envelope is what governs expiry.
 
-The SPA is intentionally kept thin. It's purely UI: list, filter, detail, CSV export, and the Convert to Issue button. No secrets, no decryption, no direct DB calls on the client side. BLT-API handles CVE normalization/score, Issue creation, and optionally org/user membership checks.
+The SPA is just UI: list, filter, detail, CSV export, and the Convert to Issue button. No secrets, no decryption, no direct DB calls on the client. BLT-API handles CVE normalization/score, Issue creation, and optionally org/user membership checks.
 
 D1 tables: `sender_keys`, `envelopes`, `evidence_meta`, `findings`, `events_outbox`, `access_logs` with unique indexes on `(org_id, sender_id, kid)`, `(sender_id, nonce)`, `(rule_id, target_url, selector, evidence_digest_sha256)`, and `dedupe_key`.
 
 Endpoints: `/api/ng/ingest`, `/api/ng/ingest/batch`, `/api/ng/findings`, `/api/ng/findings/{id}`, `/api/ng/findings/{id}/convert`, `/api/ng/events`.
 
-**Headers (ingest requests)**
+**Headers (ingest requests):**
+```
+Content-Type: application/json
+X-BLT-Signature: sha256=<hex>
+X-BLT-Timestamp: <unix_ts>
+```
 
-- Content-Type: application/json
-- X-BLT-Signature: `sha256=<hex>`
-- X-BLT-Timestamp: `<unix_ts>` (advisory for logs/rate-limit; signed issued_at governs expiry)
+Ingestion returns `201` for created/merged, `200` for duplicates, `400` for bad_sig/clock_skew/digest_mismatch/invalid_envelope, `413` for oversized payloads, and `429` with Retry-After for rate limiting. Batch returns per-item `[{index, status, finding_id?, error_code?}]` and clients only retry `status="error"` items.
 
-Ingestion returns `201` for created/merged (see response bodies), `200` for duplicates, `400` for bad_sig/clock_skew/digest_mismatch/invalid_envelope, `413` for oversized payloads, and `429` with a Retry-After for rate limiting. Batch endpoint returns per-item `[{index, status, finding_id?, error_code?}]` and clients only retry `status="error"` items.
-
-**Response bodies**
-
-- 201 Created: `{ finding_id, status: "created" | "merged", evidence_id, replay: false }`
-- 200 OK (duplicate): `{ status: "duplicate", replay: true }`
-- 400/401/413/429: `{ error: "clock_skew" | "digest_mismatch" | "bad_sig" | "invalid_envelope" }` (429 includes Retry-After)
+**Response bodies:**
+- `201 Created`: `{ finding_id, status: "created" | "merged", evidence_id, replay: false }`
+- `200 OK (duplicate)`: `{ status: "duplicate", replay: true }`
+- `400/401/413/429`: `{ error: "clock_skew" | "digest_mismatch" | "bad_sig" | "invalid_envelope" }` (429 includes Retry-After)
 
 Webhook headers: `X-BLT-Webhook-Signature: sha256=<hex>` and `X-BLT-Webhook-Timestamp: <unix_ts>`.
 
-A few explicit non-goals: no Django/DRF endpoints or templates in the BLT main repo, no PostgreSQL migrations, no heavy PDF pipeline by default (CSV is required; PDF is optional and timeboxed), and evidence never touches logs in any readable form.
+**Non-goals:** no Django/DRF endpoints or templates in BLT main repo, no PostgreSQL migrations, no heavy PDF pipeline by default (CSV required; PDF optional and timeboxed), evidence never touches logs in readable form.
 
-**BLT main repo touch points (allowed when needed)**  
-While the solution is serverless-first, minimal, well-scoped changes in the BLT main repo are acceptable if integration requires them (e.g. a small permission hook or signal, narrow model tweaks or admin flags, non-breaking API/webhook hooks). Any change must be narrowly scoped, approved by maintainers, documented, and covered by tests. No new heavy endpoints/templates or large PostgreSQL models are planned for GSoC v1.
+**BLT main repo touch points (allowed when needed):**
+Minimal, well-scoped changes in the BLT main repo are fine if integration requires them (e.g. a small permission hook or signal, narrow model tweaks, non-breaking API/webhook hooks). Any change needs to be narrowly scoped, approved by maintainers, documented, and covered by tests. No new heavy endpoints or large PostgreSQL models planned for v1.
 
-**Flutter desktop client (core component)**  
-The Flutter desktop app (Windows/macOS/Linux) is a first-class NetGuardian deliverable: builds/sends signed ztr-finding-1 envelopes (HMAC-SHA256) to `/api/ng/ingest`; offline queue + retry on flaky networks; minimal UI (target selection, preview, send; links back to triage SPA). Ships as part of v1 (not optional) and follows the same ingestion contract as the autonomous Worker.
+**Flutter desktop client (core component):**
+The Flutter desktop app (Windows/macOS/Linux) is a first-class deliverable: builds/sends signed `ztr-finding-1` envelopes (HMAC-SHA256) to `/api/ng/ingest`, offline queue + retry on flaky networks, minimal UI (target selection, preview, send, links back to triage SPA). Ships as part of v1, not optional.
 
 ---
 
 ## 3. Security Invariants (ztr-finding-1)
 
-Every envelope needs these fields: `version` ("ztr-finding-1"), `sender_id`, `kid` (for key rotation), `alg` (must be `hmac-sha256` for v1, Ed25519 may come later), `issued_at` (RFC 3339 UTC), `nonce` (unique per `sender_id`), `payload_digest` (`hex(SHA-256(payload_bytes))`), `signature` (base64), and exactly one of `payload_ciphertext` (base64) or `payload_plaintext` (JSON with `plaintext_mode=true`). The `payload_digest` has to be computed over the exact bytes sent, not a reformatted version.
+Every envelope needs these fields: `version` ("ztr-finding-1"), `sender_id`, `kid` (for key rotation), `alg` (must be `hmac-sha256` for v1, Ed25519 may come later), `issued_at` (RFC 3339 UTC), `nonce` (unique per `sender_id`), `payload_digest` (`hex(SHA-256(payload_bytes))`), `signature` (base64), and exactly one of `payload_ciphertext` (base64) or `payload_plaintext` (JSON with `plaintext_mode=true`). `payload_digest` has to be computed over the exact bytes sent, not a reformatted version.
 
-For signing, canonical JSON is produced with the `signature` field removed, keys sorted, no extra whitespace, UTF-8 encoded. Then HMAC-SHA256 over those bytes, compared with `hmac.compare_digest`. This is written explicitly from the spec, not generated.
+Signing: canonical JSON with the `signature` field removed, keys sorted, no extra whitespace, UTF-8 encoded, then HMAC-SHA256 over those bytes compared with `hmac.compare_digest`. `X-BLT-Timestamp` is never trusted for security decisions, only `issued_at` inside the signed envelope is.
 
-On replay and freshness: the server enforces a ±5 min window on `issued_at` and the DB has `UNIQUE(sender_id, nonce)` so any duplicate just gets a `200 {status: "duplicate"}` back instead of an error. **Timestamp trust:** Server verifies `issued_at` inside the signed envelope; X-BLT-Timestamp is never trusted for security decisions (advisory only for logs/rate-limit).
+Replay/freshness: server enforces ±5 min window on `issued_at`. `UNIQUE(sender_id, nonce)` in D1 means duplicates get a `200 {status: "duplicate"}` back, not an error.
 
-Evidence is AES-GCM encrypted at rest with a rotatable Worker-managed key. **AES-GCM key management:** Keys are stored in Cloudflare environment secrets. Each ciphertext stores a key version; rotation occurs via re-encrypt-on-access or a background migration. The SPA only ever sees digests, sizes, or pointers, never the actual content. Every decrypt is written to `access_logs`. Nothing sensitive ever appears in logs. **1 MiB (1,048,576 bytes) cap** applies to the entire HTTP request body (the JSON envelope as received over the wire, after JSON serialization); enforced with 413 and configurable per org.
+Evidence is AES-GCM encrypted at rest with a rotatable Worker-managed key stored in Cloudflare environment secrets. Each ciphertext stores a key version; rotation happens via re-encrypt-on-access or a background migration. The SPA only ever sees digests, sizes, or pointers. Every decrypt goes to `access_logs`. Nothing sensitive appears in logs. The 1 MiB cap applies to the entire HTTP request body as received over the wire; enforced with `413`, configurable per org.
 
-All Finding queries are scoped to the org. Convert-to-Issue checks org ownership before doing anything. Rate limits are per org. The nonce just needs to be unique per `sender_id`. Recommended format: `"<unix_ts>-"` (ordering not required; uniqueness is).
+All Finding queries are org-scoped. Convert-to-Issue checks org ownership first. Rate limits are per org. Nonce just needs to be unique per `sender_id`; recommended format is `"<unix_ts>-<random>"`.
 
 ---
 
 ## 4. 12-Week Implementation Plan
 
 | Week | Focus |
-|------|-------|
+|---|---|
 | 1 | Spec + D1 schema + scaffolding |
 | 2 | Ingestion verification, replay, caps |
 | 3 | Auth + org scoping + /findings list |
 | 4 | /findings/{id} + server-side decrypt + audit + permissions |
-| 5 | CVE plumbing (BLT-API) + Dedup/idempotency + CSV scaffold |
+| 5 | CVE plumbing (BLT-API) + dedup/idempotency + CSV scaffold |
 | 6 | Triage polish + RFIs + midterm E2E + blog post |
 | 7 | Fidelity fixtures and acceptance gates |
 | 8 | Consensus for criticals + quotas/back-pressure |
@@ -148,7 +145,7 @@ All Finding queries are scoped to the org. Convert-to-Issue checks org ownership
 
 ---
 
-### Week 1 — Spec + D1 Schema + Scaffolding
+### Week 1 - Spec + D1 Schema + Scaffolding
 
 Finalize the `ztr-finding-1` spec (fields, canonicalization, caps, errors). Create the D1 schema with all six tables and unique indexes. Set up the Worker project and CI skeleton. Write and test the canonicalization and digest utilities.
 
@@ -156,7 +153,7 @@ Finalize the `ztr-finding-1` spec (fields, canonicalization, caps, errors). Crea
 
 ---
 
-### Week 2 — Ingestion Verification, Replay, Caps
+### Week 2 - Ingestion Verification, Replay, Caps
 
 Implement `POST /api/ng/ingest` and `/batch`: signature verify, ±5 min skew enforcement, 1 MiB cap, DB uniqueness on `(sender_id, nonce)` with idempotent duplicate path, consistent error codes and JSON responses. Write property tests covering the main failure paths.
 
@@ -164,62 +161,61 @@ Implement `POST /api/ng/ingest` and `/batch`: signature verify, ±5 min skew enf
 
 ---
 
-### Week 3 — Auth + org scoping + /findings list
+### Week 3 - Auth + Org Scoping + /findings List
 
-- GitHub OAuth + PKCE in Worker; secure session cookie.
-- Org scoping and permission checks on list queries.
-- `/api/ng/findings` with filters/paging/sort; SPA list view (no detail yet).
+- GitHub OAuth + PKCE in Worker; secure session cookie
+- Org scoping and permission checks on list queries
+- `/api/ng/findings` with filters/paging/sort; SPA list view (no detail yet)
 
 **Exit criterion:** Login working, org-scoped list functional, permission boundaries tested.
 
 ---
 
-### Week 4 — /findings/{id} + server-side decrypt + audit + permissions
+### Week 4 - /findings/{id} + Server-side Decrypt + Audit + Permissions
 
-- `/api/ng/findings/{id}` returns redacted metadata + server-side decrypted snippet.
-- Audit logging on every evidence view; enforce org membership and permission checks.
-- SPA detail view: redacted snippet, access audit indicator, "Convert to Issue" (stub).
+- `/api/ng/findings/{id}` returns redacted metadata + server-side decrypted snippet
+- Audit logging on every evidence view; enforce org membership and permission checks
+- SPA detail view: redacted snippet, access audit indicator, "Convert to Issue" (stub)
 
 **Exit criterion:** Detail and decrypt path working, audit log on every evidence view, org-scoped access enforced.
 
 ---
 
-### Week 5 — CVE plumbing (BLT-API) + Dedup/idempotency + CSV scaffold
+### Week 5 - CVE Plumbing (BLT-API) + Dedup/Idempotency + CSV Scaffold
 
-- Integrate BLT-API `normalize_cve_id`/`get_cve_score`; store `cve_id`/`cve_score` on Finding; SPA CVE filters.
-- Enforce fingerprint uniqueness `(rule_id, target_url, selector?, evidence_digest)` with upsert semantics; concurrency tests.
-- CSV export endpoint with redaction; SPA "Export CSV" button; snapshot tests.
+- Integrate BLT-API `normalize_cve_id`/`get_cve_score`; store `cve_id`/`cve_score` on Finding; SPA CVE filters
+- Enforce fingerprint uniqueness `(rule_id, target_url, selector?, evidence_digest)` with upsert semantics; concurrency tests
+- CSV export endpoint with redaction; SPA "Export CSV" button; snapshot tests
 
 **Exit criterion:** CVE enrichment and filters functional, dedup proven under concurrency, CSV export with redaction tests passing.
 
 ---
 
-### Week 6 — Triage polish + RFIs + midterm E2E + blog post
+### Week 6 - Triage Polish + RFIs + Midterm E2E + Blog Post
 
-- Evidence viewer polish; canned RFI fragments; midterm E2E: login → ingest → triage → decrypt → Convert-to-Issue (BLT-API) → verified event → CSV.
-- **Public technical blog post (midterm):** architecture, security invariants, integration approach, and lessons learned.
+Evidence viewer polish; canned RFI fragments; midterm E2E: login, ingest, triage, decrypt, Convert-to-Issue (BLT-API), verified event, CSV. Public technical blog post covering architecture, security invariants, integration approach, and lessons learned.
 
-**Exit criterion:** E2E demo runs clean end-to-end; midterm blog post published; midterm checkpoint passed.
+**Exit criterion:** E2E demo runs clean, midterm blog post published, midterm checkpoint passed.
 
 ---
 
-### Week 7 — Fidelity Fixtures and Acceptance Gates
+### Week 7 - Fidelity Fixtures and Acceptance Gates
 
-Build 5–8 curated fixtures with known expected outcomes (CVE IDs + severities). Persist ingestion and CVE enrichment metrics in D1. Enforce acceptance thresholds in CI (≥95% ingestion success, ≥90% CVE match on the curated set). Document the fixture procedure and regression checklist.
+Build 5-8 curated fixtures with known expected outcomes (CVE IDs + severities). Persist ingestion and CVE enrichment metrics in D1. Enforce acceptance thresholds in CI (>=95% ingestion success, >=90% CVE match). Document the fixture procedure and regression checklist.
 
 **Exit criterion:** Metrics pipeline live, thresholds enforced in CI.
 
 ---
 
-### Week 8 — Consensus for Criticals + Quotas/Back-pressure
+### Week 8 - Consensus for Criticals + Quotas/Back-pressure
 
-Add a consensus gate for criticals: auto-convert only if two or more signals corroborate, otherwise requires manual override. Update confidence scoring. Add per-org/hour quotas and 429 with Retry-After. Make the SPA handle back-pressure gracefully. Test all of this.
+Consensus gate for criticals: auto-convert only if two or more signals corroborate, otherwise manual override. Update confidence scoring. Per-org/hour quotas and 429 with Retry-After. SPA handles back-pressure gracefully.
 
 **Exit criterion:** Consensus gate on, quotas and 429 behavior solid, tests passing.
 
 ---
 
-### Week 9 — Remediation and Insights (Static)
+### Week 9 - Remediation and Insights (Static)
 
 Map remediation fragments to `rule_id`s with OWASP links. Add "why this matters" callouts. Render safe static content in the SPA. Test rule-to-fragment mapping and confirm no XSS vectors.
 
@@ -227,25 +223,25 @@ Map remediation fragments to `rule_id`s with OWASP links. Add "why this matters"
 
 ---
 
-### Week 10 — Disclosure Helpers and Reports
+### Week 10 - Disclosure Helpers and Reports
 
-Integrate `security.txt` detection into Convert-to-Issue and reports. Finalize CSV with any extra columns. PDF is optional and timeboxed to 0.5–1 week with the same redaction rules as CSV; deferred if it proves unstable.
+Integrate `security.txt` detection into Convert-to-Issue and reports. Finalize CSV. PDF is optional and timeboxed to 0.5-1 week with the same redaction rules; deferred if it proves unstable.
 
 **Exit criterion:** CSV and `security.txt` live, PDF only if timebox succeeds, tests green.
 
 ---
 
-### Week 11 — Verified Events and Minimal Events API
+### Week 11 - Verified Events and Minimal Events API
 
-Insert into `events_outbox` on convert/resolution with `version`, `dedupe_key`, and HMAC signature. Implement webhook delivery with HMAC headers, exponential backoff retries, and `dedupe_key` idempotency. Add a read-only `/api/ng/events` endpoint for consumers. Test signature verification, retry logic, and idempotent delivery. Write example consumers and docs for BLT-Rewards and RepoTrust.
+Insert into `events_outbox` on convert/resolution with `version`, `dedupe_key`, and HMAC signature. Webhook delivery with HMAC headers, exponential backoff retries, and `dedupe_key` idempotency. Read-only `/api/ng/events` for consumers. Test signature verification, retry logic, idempotent delivery. Write example consumers and docs for BLT-Rewards and RepoTrust.
 
 **Exit criterion:** Webhooks working with retries, events API documented and tested.
 
 ---
 
-### Week 12 — Hardening, Docs, Pilot, v1.0
+### Week 12 - Hardening, Docs, Pilot, v1.0
 
-Security review covering key handling, AES-GCM usage, nonce uniqueness, cache-poisoning resistance, permission paths, and log redaction. Set up Cron Triggers for retries/cleanup. Tune WAF/rate-limit rules. Run a pilot with 1–2 orgs, gather feedback, and fix high-priority issues. Write the runbook and rollback/data deletion docs. Tag v1.0.
+Security review: key handling, AES-GCM usage, nonce uniqueness, cache-poisoning resistance, permission paths, log redaction. Cron Triggers for retries/cleanup. WAF/rate-limit tuning. Pilot with 1-2 orgs, fix high-priority feedback, write the runbook and rollback/data deletion docs. Tag v1.0.
 
 **Exit criterion:** v1.0 tagged, full pipeline live, pilot metrics published, final report submitted.
 
@@ -285,7 +281,7 @@ Worker modules (ingestion, triage, CVE, events) are kept thin and test-covered s
 
 **BLT-API:** `normalize_cve_id`/`get_cve_score` and Issue creation. Optional org/user membership check.
 
-**Downstream consumers:** HMAC-signed verified events (versioned, with `dedupe_key`) and a minimal read-only events API for polling. Example consumers for BLT-Rewards and RepoTrust included in docs. Downstream logic (scoring, gamification, education) stays out of NetGuardian.
+**Downstream consumers:** HMAC-signed verified events (versioned, with `dedupe_key`) and a minimal read-only events API for polling. Example consumers for BLT-Rewards and RepoTrust included in docs. Downstream logic stays out of NetGuardian.
 
 **Webhook contract:** Both envelope and event payloads carry `version` and `dedupe_key` for idempotent consumption. Webhook HMAC headers: `X-BLT-Webhook-Signature: sha256=<hex>` and `X-BLT-Webhook-Timestamp: <unix_ts>`.
 
