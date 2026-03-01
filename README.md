@@ -323,7 +323,7 @@ Each module (ingestion, triage, CVE, events) is kept small and test-covered so c
 
 I'm on IST and my mentors are on UTC. We already have Slack huddles going from the current contribution cycle so the GSoC slot would just be a separate day, 20-30 mins. I'll put up a default time window at the start of community bonding with alternatives for holidays.
 
-- Weekly written update every Friday covering goals, what got done, risks and how I'm handling them, and what's next; posted to Slack and the relevant GH issue
+- Weekly written update every Friday covering goals, what got done, risks and how I'm handling them, and what's next; posted to Slack and the relevant GH issue. I will provide weekly progress reports against this schedule via the project channel.
 - All work tracked in GH issues with labels for type, priority, and milestone; PRs linked back to their issues
 - 48h review turnaround target; if nothing by day 3 I'll ping on Slack and the issue
 - Calendar holds for Week 6 midterm and Week 12 final, each with a dry run the day before
@@ -350,6 +350,8 @@ In line with OWASP/GSoC guidelines:
 **How I used them:** Only for supportive tasks like improving documentation clarity, variable names, or test-case ideas. No substantial code, design decisions, or research was auto-generated without full review. All the security-critical decisions around encryption, signing, verification, and access control are mine. Any LLM suggestion in those areas was treated as a starting draft, reasoned through independently, rewritten as needed, and covered by tests before merge.
 
 **Review:** Everything LLM-assisted was independently reviewed, tested, and verified by me before it went in. No unreviewed AI output was submitted.
+
+**Privacy and sustainability:** No copyrighted, confidential, or proprietary content is included in prompts. I prefer smaller or shared models when feasible to reduce environmental impact.
 
 **LLMs were used for supportive or editorial purposes in this work. All outputs were reviewed and validated by the contributor to ensure accuracy and originality.**
 
