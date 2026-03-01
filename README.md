@@ -6,6 +6,8 @@
 
 > Zero-trust ingestion for security findings, CVE-aware triage, and verified events—all serverless (Cloudflare Worker + D1 + GitHub Pages SPA). No new Django in BLT main repo.
 
+<!-- Optional hero: ![NetGuardian](docs/hero-banner.png) -->
+
 ---
 
 ## Abstract
@@ -24,38 +26,98 @@ All NetGuardian backend logic runs in Cloudflare Workers with D1. The triage UI 
 
 ## What This Enables
 
+<!-- Optional infographic: ![What This Enables](docs/diagram-what-enables.png) -->
+
 - Zero-trust ingestion for security findings with replay resistance and strict freshness
 - CVE-aware triage at scale with server-side decrypt and audited access
 - Verified, signed events for downstream programs (BLT-Rewards, RepoTrust, Preflight)
 - A first-class Flutter desktop app for local runs with envelope signing, offline queue, and retry
 - Fully serverless footprint: GitHub Pages SPA + Cloudflare Worker + D1; no new Django/DRF endpoints or PostgreSQL migrations in BLT to ship v1; only minimal, non-breaking hooks if explicitly approved
 
-```mermaid
-flowchart LR
-  Flutter["Flutter Desktop"] -->|ztr-finding-1| Worker["Cloudflare Worker"]
-  Worker -->|JSON APIs| SPA["GitHub Pages SPA"]
-  Worker --> D1["Cloudflare D1"]
-  Worker --> BLTAPI["BLT-API - CVE & Issues"]
-  Worker --> Down["Verified Webhooks - Rewards, RepoTrust, Preflight"]
-```
+![What This Enables — clients to Worker to SPA, D1, BLT-API, downstream](docs/diagram-architecture.png)
 
 ---
 
-## Design & UI preview
+## Proposal visuals
 
-*Placeholder for mockups—drop in screenshots or wireframes when you have them so the proposal has a personal, visual touch.*
+We use visuals throughout so the proposal is easy to scan and has a clear personal touch. Below: what each image is for, where it goes, and copy-paste briefs you can use in Notebook LM, Gemini, Figma, or Excalidraw.
 
-| Component | What it shows |
-|-----------|----------------|
-| **Triage SPA** (GitHub Pages) | Findings list (filters, paging), detail view with redacted snippet + "Convert to Issue", CSV export. Light, readable layout. |
-| **Flutter desktop** | Target selection, envelope preview, send button, link back to triage SPA. Minimal, focused UI. |
+| # | Asset | File | Where it appears |
+|---|--------|------|-------------------|
+| 1 | Architecture (swarm) | `docs/diagram-architecture.png` | What This Enables, Architecture & Stack |
+| 2 | **What This Enables** infographic | `docs/diagram-what-enables.png` | What This Enables (above the bullets or next to them) |
+| 3 | **Triage SPA** GUI mockup | `docs/mockup-triage.png` | This section |
+| 4 | **Flutter desktop** GUI mockup | `docs/mockup-flutter.png` | This section |
+| 5 | **12-week timeline** strip (optional) | `docs/timeline-12weeks.png` | Above or inside 12-Week Implementation Plan |
+| 6 | **Hero / cover** (optional) | `docs/hero-banner.png` | Right under the title blockquote |
 
-- *Triage SPA mockup:* add image as `docs/mockup-triage.png` (or `.svg`) and link below.
-- *Flutter app mockup:* add image as `docs/mockup-flutter.png` (or `.svg`) and link below.
+---
 
-<!-- Uncomment and fix paths once you have mockup images:
+### 2. What This Enables — infographic
+
+*One panel: five value props with icons or short labels. Style: clean, same palette as the architecture diagram (or your choice). No code.*
+
+**Copy-paste brief:**  
+Create a single infographic image (PNG or SVG, ~800px wide) for "What NetGuardian enables." Five horizontal or grid items, each with a small icon and one line of text: (1) Zero-trust ingestion — replay-resistant, fresh findings. (2) CVE-aware triage — server-side decrypt, audited access. (3) Verified events — signed events for Rewards, RepoTrust, Preflight. (4) Flutter desktop app — envelope signing, offline queue, retry. (5) Fully serverless — Worker + D1 + GitHub Pages, no Django in BLT. Style: modern, readable, same color vibe as the rest of the proposal. Output only the image.
+
+Save as **`docs/diagram-what-enables.png`**.
+
+---
+
+### 3. Triage SPA — GUI mockup
+
+*Web UI: findings list and detail view. Gives reviewers a clear picture of the triage experience.*
+
+**Copy-paste brief:**  
+Create a single GUI mockup image (PNG or SVG) for a "NetGuardian Triage" web app. Show a clean, modern single-page layout: left or top — filters (severity, CVE, date) and a table or list of findings (columns: ID, rule, severity, target, CVE). One row highlighted or a detail panel on the right showing: redacted snippet of evidence, "Convert to Issue" button, and an "Export CSV" option. Light background, readable typography, no real data — placeholder text is fine. Style: professional, consistent with a security triage tool. Output only the image.
+
+Save as **`docs/mockup-triage.png`**.
+
+---
+
+### 4. Flutter desktop — GUI mockup
+
+*Desktop app: target selection, envelope preview, send. Shows the client side of the pipeline.*
+
+**Copy-paste brief:**  
+Create a single GUI mockup image (PNG or SVG) for a "NetGuardian Flutter desktop" app window. Show a minimal desktop UI: (1) A target selection area (e.g. URL or scan target input). (2) A small preview of the envelope or payload (e.g. "ztr-finding-1" or "Signed envelope ready"). (3) A prominent "Send to ingest" or "Submit" button. (4) A short line like "Open triage in browser" or a link. Style: minimal, focused, desktop app (window chrome optional). Clean and modern. Output only the image.
+
+Save as **`docs/mockup-flutter.png`**.
+
+---
+
+### 5. 12-week timeline strip (optional)
+
+*Horizontal strip: Community Bonding → Weeks 1–6 → Midterm → Weeks 7–12 → Final. Quick at-a-glance.*
+
+**Copy-paste brief:**  
+Create a single horizontal timeline image (PNG or SVG, ~1000px wide). Label segments: "Community Bonding" | "Weeks 1–2" | "Weeks 3–4" | "Weeks 5–6" | "Midterm" | "Weeks 7–8" | "Weeks 9–10" | "Weeks 11–12" | "Final". Simple blocks or a single bar with dividers. Minimal text, clear labels. Style: clean, matches the proposal. Output only the image.
+
+Save as **`docs/timeline-12weeks.png`**.
+
+---
+
+### 6. Hero / cover (optional)
+
+*Banner under the title: project name + tagline or key stack. Sets the tone.*
+
+**Copy-paste brief:**  
+Create a short hero/banner image (PNG or SVG, ~1000×200px or similar). Content: "NetGuardian" as the main title and a one-line tagline like "Zero-trust ingestion & CVE-aware triage" or "Serverless security findings pipeline." Optional: small icons for Worker, D1, GitHub Pages. Style: modern, on-brand with the rest of the proposal. Output only the image.
+
+Save as **`docs/hero-banner.png`**.
+
+---
+
+### Inline preview (uncomment when files exist)
+
+Add each file under `docs/` with the filename above, then uncomment the lines that match.
+
+<!--
+![What This Enables infographic](docs/diagram-what-enables.png)
 ![Triage SPA](docs/mockup-triage.png)
 ![Flutter desktop](docs/mockup-flutter.png)
+![12-week timeline](docs/timeline-12weeks.png)
+![Hero](docs/hero-banner.png)
 -->
 
 ---
@@ -64,43 +126,7 @@ flowchart LR
 
 The whole thing is serverless. The Worker (Python) handles all backend logic, D1 (SQLite) is the storage layer, and the triage UI is a static SPA on GitHub Pages. BLT-API handles CVE lookups and Issue creation. No Django, no PostgreSQL, no Celery. CORS is locked to GitHub Pages origins only; only GitHub Pages origin(s) are permitted for SPA to Worker requests.
 
-```mermaid
-flowchart TB
-  subgraph Clients["Clients"]
-    FC["Flutter / local agents"]
-    WX["BLT-NetGuardian Worker<br/>scanner + exporter"]
-  end
-
-  subgraph CF["Cloudflare Worker"]
-    Ingest["POST /api/ng/ingest<br/>+/batch"]
-    Triage["GET /api/ng/findings<br/>detail, convert"]
-    CVE["CVE via BLT-API"]
-    Events["Verified events webhook"]
-  end
-
-  subgraph Storage["D1"]
-    D1[(sender_keys, envelopes,<br/>findings, evidence_meta,<br/>events_outbox, access_logs)]
-  end
-
-  subgraph Frontend["GitHub Pages"]
-    SPA["Triage SPA"]
-  end
-
-  subgraph External["External"]
-    BLTAPI["BLT-API<br/>CVE + Issue creation"]
-    Down["Downstream (Rewards, RepoTrust, Preflight)"]
-  end
-
-  FC -->|ztr-finding-1| Ingest
-  WX -->|ztr-finding-1| Ingest
-  Ingest --> D1
-  Triage --> D1
-  CVE --> BLTAPI
-  Triage --> CVE
-  SPA -->|HTTPS| Triage
-  Triage --> BLTAPI
-  Events --> Down
-```
+![Architecture — Clients, Cloudflare Worker, D1, GitHub Pages SPA, BLT-API, downstream](docs/diagram-architecture.png)
 
 The Worker does the heavy lifting: ingestion (`POST /api/ng/ingest` + `/batch`), triage list/detail APIs, server-side decrypt with audit logging, CVE enrichment, org-scoped auth via GitHub OAuth + PKCE, and outbox/webhooks. `X-BLT-Timestamp` is advisory for logs and rate-limiting only; `issued_at` inside the signed envelope governs expiry.
 
@@ -131,6 +157,8 @@ All Finding queries are org-scoped. Convert-to-Issue checks org ownership first.
 ---
 
 ## 12-Week Implementation Plan
+
+<!-- Optional timeline: ![12-week timeline](docs/timeline-12weeks.png) -->
 
 | Week | Focus |
 |---|---|
@@ -423,7 +451,7 @@ I haven't contributed outside OWASP as my primary goal is delivering and working
 **University:** GITAM University, Hyderabad, Telangana  
 **Degree:** B.Tech in Computer Science and Engineering, 3rd year  
 **OWASP Slack:** preetham  
-**Project coordination:** We use Slack (no project mailing list). The NetGuardian Worker and D1/SPA stack live in the maintainer's repo, Hence I've run and extended it locally for this proposal.
+**Project coordination:** We use Slack (no project mailing list). The NetGuardian Worker and D1/SPA stack live in the maintainer's repo; I've run and extended it locally for this proposal.
 
 I'd been trying to build security-focused products and tools for a while before joining OWASP. Got far enough each time to understand the problem but kept hitting walls around the parts I was lacking experience in, how real security tooling is architected, how findings get reported and acted on, how a codebase is maintained by an entire community rather than one person. It was pretty obvious what I needed, not a small team but an entire community of contributors who were stronger than me in the areas I lacked. So I joined OWASP-BLT, spent a few days reading the codebase, got BLT running locally, and understood what the community was building before opening my first PR. Since then I've had a decent number of meaningful PRs merged across BLT and its related repos, ranging from backend fixes and middleware work to new features, standalone repo migrations, taking the initiative on the GSoC 2026 ideas list and 350h project scoping, and actively working on and re-iterating goals on the community discussion board for 2026 around maintaining speed and quality of development while staying true to the core of what BLT is.
 
