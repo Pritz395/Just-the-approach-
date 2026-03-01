@@ -37,19 +37,6 @@ All NetGuardian backend logic runs in Cloudflare Workers with D1. The triage UI 
 
 ## Proposal visuals
 
-We use visuals throughout so the proposal is easy to scan and has a clear personal touch.
-
-| # | Asset | File | Where it appears |
-|---|--------|------|-------------------|
-| 1 | Architecture (swarm) | `docs/diagram-architecture.png` | Architecture & Stack only |
-| 2 | **What This Enables** infographic | `docs/diagram-what-enables.png` | What This Enables |
-| 3 | **Triage SPA** GUI mockup | `docs/mockup-triage.png` | This section |
-| 4 | **Flutter desktop** GUI mockup | `docs/mockup-flutter.png` | This section |
-
----
-
-### Inline preview
-
 ![Triage SPA](docs/mockup-triage.png)  
 *RED for BLT's theme.*
 
