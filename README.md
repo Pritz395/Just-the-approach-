@@ -66,6 +66,12 @@ Full request/response contracts, webhook headers, and D1 schema are in the Appen
 
 ---
 
+## Performance & Cost Considerations
+
+Workers and D1 keep operational cost low and predictable. We assume a pilot scale of a handful of orgs and moderate ingest volume (hundreds to low thousands of findings per week). Workers are billed per request with a generous free tier; D1 has a free tier and then usage-based pricing for rows read/written and storage. The 1 MiB request cap and per-org rate limits keep traffic and storage growth bounded. GitHub Pages for the SPA is free. No always-on servers or dedicated DB instances, so there’s no fixed monthly infra cost—only usage. If traffic grows, we can tune rate limits, add caching, or move heavy reads to D1’s analytical engine later; the design stays within platform limits and stays cost-effective for BLT’s expected use.
+
+---
+
 ## Security Invariants (ztr-finding-1)
 
 Every envelope needs these fields: `version` ("ztr-finding-1"), `sender_id`, `kid` (for key rotation), `alg` (MUST be `hmac-sha256` for v1, Ed25519 may come later), `issued_at` (RFC 3339 UTC), `nonce` (unique per `sender_id`), `payload_digest` (`hex(SHA-256(payload_bytes))`), `signature` (base64), and exactly one of `payload_ciphertext` (base64) or `payload_plaintext` (JSON with `plaintext_mode=true`). `payload_digest` has to be computed over the exact bytes sent, not a reformatted version.
