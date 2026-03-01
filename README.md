@@ -68,7 +68,7 @@ Full request/response contracts, webhook headers, and D1 schema are in the Appen
 
 ## Performance & Cost Considerations
 
-Workers and D1 keep operational cost low and predictable. We assume a pilot scale of a handful of orgs and moderate ingest volume (hundreds to low thousands of findings per week). Workers are billed per request with a generous free tier; D1 has a free tier and then usage-based pricing for rows read/written and storage. The 1 MiB request cap and per-org rate limits keep traffic and storage growth bounded. GitHub Pages for the SPA is free. No always-on servers or dedicated DB instances, so there’s no fixed monthly infra cost—only usage. If traffic grows, we can tune rate limits, add caching, or move heavy reads to D1’s analytical engine later; the design stays within platform limits and stays cost-effective for BLT’s expected use.
+Workers and D1 keep operational cost low and predictable, so we assume a pilot scale of a handful of orgs and moderate ingest volume (hundreds to low thousands of findings per week) and Workers are billed per request with a generous free tier as well. D1 has a free tier and then usage-based pricing for rows read/written and storage. The 1 MiB request cap and per-org rate limits keep traffic and storage growth bounded. GitHub Pages for the SPA is free. No always-on servers or dedicated DB instances, so there’s no fixed monthly infra cost—only usage. If traffic grows, we can tune rate limits, add caching, or move heavy reads to D1’s analytical engine later, hence the design stays within platform limits and stays cost-effective for BLT’s expected use.
 
 ---
 
